@@ -1,6 +1,6 @@
 //! A Complete Binary Tree library.
 //! It is internally represented as a 1D array.
-//! Provides a way to traverse the tree in parallel. Useful for paralalizing divide and conquer style problems.
+//! Provides a way to get mutable references to children nodes simultaneously. Useful for paralalizing divide and conquer style problems.
 //!
 //! ## Unsafety
 //! There is some unsafe code.
@@ -45,6 +45,22 @@ impl<T> GenTree<T> {
 
     pub fn get_height(&self) -> usize {
         self.height
+    }
+
+
+    ///Create a complete binary tree using the specified node generating function.
+    pub fn from_dfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
+        assert!(height>=1);
+        let num_nodes=self::compute_num_nodes(height);
+
+        let mut vec=Vec::with_capacity(num_nodes);
+        for _ in 0..num_nodes{
+            vec.push(func())
+        }
+        GenTree{
+            nodes:vec,
+            height:height
+        }
     }
 
     ///If the nodes.len() is not equal to what compute_num_nodes() returns, this will panic.
