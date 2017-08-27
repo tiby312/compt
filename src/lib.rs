@@ -2,22 +2,40 @@
 //! It is internally represented as a 1D array.
 //! Provides a way to get mutable references to children nodes simultaneously. Useful for paralalizing divide and conquer style problems.
 //!
-//! ## Unsafety
-//! There is some unsafe code.
+//!## Unsafety
+//!There is some unsafe code.
 //!
+//!## Example
+//!```
+//!let mut tree=GenTree::from_bfs(&mut ||0.0,5);
+//!{
+//!     let mut down=tree.create_down_mut();
 //!
+//!     {
+//!         let (_,b)=down.next();
+//!         let (mut left,mut right)=b.unwrap();
 //!
+//!         let (val1,_)=left.next();
+//!         let (val2,_)=right.next();
+//!         *val1=5.0;
+//!         *val2=4.0;
+//!     }
+//!     {
+//!         let (_,b)=down.next();
+//!         let (mut left,_)=b.unwrap();
+//!         *left.get_mut()=3.0;    
+//!     }
+//!}
+//!{
+//!     let down=tree.create_down();
+//!     let (left,right)=down.next().unwrap();
+//!     assert!(*left.get()==3.0);
+//!     assert!(*right.get()==4.0);
+//!}
+//!```
 //!
-
 
 use std::marker::PhantomData;
-
-/*
-pub struct TreeProp{
-    pub height:usize,
-    pub num_nodes:usize
-}*/
-
 
 
 ///The complete binary tree. Internally stores the nodes in a Vec<T>.
@@ -38,10 +56,6 @@ impl<T> GenTree<T> {
     pub fn get_num_nodes(&self) -> usize {
         self.nodes.len()
     }
-    /*
-    pub fn create_tree_prop(&self)->TreeProp{
-        TreeProp{height:self.height,num_nodes:self.nodes.len()}
-    }*/
 
     pub fn get_height(&self) -> usize {
         self.height
@@ -63,18 +77,6 @@ impl<T> GenTree<T> {
         }
     }
 
-    ///If the nodes.len() is not equal to what compute_num_nodes() returns, this will panic.
-    ///The height must also be atleast one or it will panic.
-    pub fn from_vec(nodes:Vec<T>,height:usize)->GenTree<T>{
-        assert!(height>=1);
-        assert!( nodes.len() == self::compute_num_nodes(height));
-
-        GenTree {
-            nodes: nodes,
-            height: height,
-        } 
-    }
-
     ///Guarenteed to be a root.
     pub fn get_root_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { self.nodes.get_unchecked_mut(0) }
@@ -84,17 +86,21 @@ impl<T> GenTree<T> {
     pub fn get_root<'a>(&'a self) -> &'a T {
         unsafe { self.nodes.get_unchecked(0) }
     }
-    
 
-    pub fn create_down_mut(&mut self)->DownTMut<T>{
-        DownTMut{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
-    }
+    //Create a visitor struct
     pub fn create_down(&self)->DownT<T>{
         DownT{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}}
     }
 
+    //Create a mutable visitor struct
+    pub fn create_down_mut(&mut self)->DownTMut<T>{
+        DownTMut{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
+    }
+
+
     //Visit every node in bfs order.
-    pub fn bfs<F:FnMut(&T,&LevelDesc)>(&self,func:&mut F){
+    //Unimplemented
+    pub fn bfs<F:FnMut(&T,&LevelDesc)>(&self,_func:&mut F){
         //unimplemented!();
     }
 
@@ -194,6 +200,12 @@ pub struct DownT<'a,T:'a>{
 
 impl<'a,T> DownT<'a,T>{
 
+    ///Get the node the visitor is pointing to.
+    pub fn get(&self)->&T{
+        &self.remaining.nodes[self.nodeid.0]
+    }
+
+    ///Create children visitors
     pub fn next(&self)->Option<(DownT<'a,T>,DownT<'a,T>)>{
 
         if self.leveld.is_leaf(){
@@ -206,12 +218,12 @@ impl<'a,T> DownT<'a,T>{
             DownT{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down()}
         ))
     }
+
+    ///Get information about the level we are on.
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
-    pub fn get(&self)->&T{
-        &self.remaining.nodes[self.nodeid.0]
-    }
+
 }
 
 unsafe impl<'a,T:'a> std::marker::Sync for DownTMut<'a,T>{}
@@ -230,16 +242,18 @@ pub struct DownTMut<'a,T:'a>{
 
 impl<'a,T:'a> DownTMut<'a,T>{
 
+    ///Get the node the visitor is pointing to.
     pub fn get_mut(&mut self)->&mut T{
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         a
     }
+
+    ///Create the children visitors and also return the node this visitor is pointing to.
     pub fn next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
 
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         
         if self.leveld.is_leaf(){
-            //let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
             return (a,None)
         }
 
@@ -251,6 +265,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
         )))
     }
 
+    ///Get information about the level we are on.
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
@@ -267,15 +282,20 @@ impl LevelDesc{
     fn next_down(&self)->LevelDesc{
         LevelDesc{height:self.height,depth:self.depth+1}
     }
+
     pub fn get_height(&self)->usize{
         self.height
     }
+
+    ///Returns the height-depth
     pub fn get_depth_left(&self)->usize{
         self.height-self.depth
     }
+
     pub fn get_depth(&self)->usize{
         self.depth
     }  
+
     pub fn is_leaf(&self)->bool{
         self.depth==self.height-1
     } 
@@ -283,7 +303,36 @@ impl LevelDesc{
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn it_works() {
+
+        let mut tree=GenTree::from_bfs(&mut ||0.0,5);
+
+        {
+            let mut down=tree.create_down_mut();
+
+            {
+                let (_,b)=down.next();
+                let (mut left,mut right)=b.unwrap();
+                
+                let (val1,_)=left.next();
+                let (val2,_)=right.next();
+                *val1=5.0;
+                *val2=4.0;
+            
+            }
+            {
+                let (_,b)=down.next();
+                let (mut left,_)=b.unwrap();
+                *left.get_mut()=3.0;    
+            }
+        }
+        {
+            let down=tree.create_down();
+            let (left,right)=down.next().unwrap();
+            assert!(*left.get()==3.0);
+            assert!(*right.get()==4.0);
+        }
     }
 }
