@@ -49,7 +49,7 @@ impl<T> GenTree<T> {
 
 
     ///Create a complete binary tree using the specified node generating function.
-    pub fn from_dfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
+    pub fn from_bfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
         assert!(height>=1);
         let num_nodes=self::compute_num_nodes(height);
 
