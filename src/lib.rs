@@ -1,20 +1,34 @@
+//! A Complete Binary Tree library.
+//! It is internally represented as a 1D array.
+//! Provides a way to traverse the tree in parallel. Useful for paralalizing divide and conquer style problems.
+//!
+//! ## Unsafety
+//! There is some unsafe code.
+//!
+//!
+//!
+//!
+
+
 use std::marker::PhantomData;
-//use std;
 
-
+/*
 pub struct TreeProp{
-    height:usize,
-    num_nodes:usize
-}
+    pub height:usize,
+    pub num_nodes:usize
+}*/
 
 
 
+///The complete binary tree. Internally stores the nodes in a Vec<T>.
+///Height is atleast 1.
 #[derive(Debug,Clone)]
 pub struct GenTree<T> {
     nodes: Vec<T>,
     height: usize,
 }
 
+///Compute the number of nodes in a complete binary tree based on a height.
 pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
 }
@@ -24,15 +38,17 @@ impl<T> GenTree<T> {
     pub fn get_num_nodes(&self) -> usize {
         self.nodes.len()
     }
-
+    /*
     pub fn create_tree_prop(&self)->TreeProp{
         TreeProp{height:self.height,num_nodes:self.nodes.len()}
-    }
+    }*/
 
     pub fn get_height(&self) -> usize {
         self.height
     }
 
+    ///If the nodes.len() is not equal to what compute_num_nodes() returns, this will panic.
+    ///The height must also be atleast one or it will panic.
     pub fn from_vec(nodes:Vec<T>,height:usize)->GenTree<T>{
         assert!(height>=1);
         assert!( nodes.len() == self::compute_num_nodes(height));
@@ -43,14 +59,17 @@ impl<T> GenTree<T> {
         } 
     }
 
+    ///Guarenteed to be a root.
     pub fn get_root_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { self.nodes.get_unchecked_mut(0) }
     }
 
+    ///Guarenteed to be a root.
     pub fn get_root<'a>(&'a self) -> &'a T {
         unsafe { self.nodes.get_unchecked(0) }
     }
     
+
     pub fn create_down_mut(&mut self)->DownTMut<T>{
         DownTMut{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
     }
@@ -58,8 +77,12 @@ impl<T> GenTree<T> {
         DownT{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}}
     }
 
+    //Visit every node in bfs order.
+    pub fn bfs<F:FnMut(&T,&LevelDesc)>(&self,func:&mut F){
+        //unimplemented!();
+    }
 
-    //todo make a dfs_mut
+    //Visit every node in dfs order.
     pub fn dfs<F:FnMut(&T,&LevelDesc)>(&self,func:&mut F){
         fn rec<T,F:FnMut(&T,&LevelDesc)>(a:DownT<T>,func:&mut F){
             let l=a.get_level();
@@ -79,14 +102,12 @@ impl<T> GenTree<T> {
         rec(a,func);
     }
 
-
-
-    
-    //TODO verify this
-    //go in order
+    //This will move every node to the passed closure in dfs order before consuming itself.
     pub fn dfs_consume<F:FnMut(T)>(mut self,func:&mut F){
+        
+        //TODO verify this
+
         fn rec<T,F:FnMut(T)>(mut a:DownTMut<T>,func:&mut F){
-            
             
             match a.next(){
                 (nn,Some((left,right)))=>{
@@ -131,8 +152,9 @@ impl<T> GenTree<T> {
 
 
 
-
-
+///Visitor functions pass this as an argument to be used by the user.
+///It is never used to index into the tree, but a user might have some use for it.
+///The nodes in the tree are kept in the tree in bfs order.
 #[derive(Copy,Clone,Debug)]
 struct NodeIndex(pub usize); //todo dont make private
 
@@ -145,8 +167,9 @@ impl NodeIndex{
 
 
 
-
-//Safe to traverse downwards and get a mutable reference to every element
+///A visitor struct. 
+///Since this is a read only visitor, the children DownT's can safely have the same lifetime as their parent.
+///This means multiple instances of DownT may end up pointing to the same node (if next() is called multiple times).
 pub struct DownT<'a,T:'a>{
     remaining:&'a GenTree<T>,
     nodeid:NodeIndex,
@@ -178,7 +201,9 @@ impl<'a,T> DownT<'a,T>{
 unsafe impl<'a,T:'a> std::marker::Sync for DownTMut<'a,T>{}
 unsafe impl<'a,T:'a> std::marker::Send for DownTMut<'a,T>{}
 
-//Safe to traverse downwards and get a mutable reference to every element
+///A mutable visitor struct.
+///Unlike DownT, the children's lifetime may be smaller that the lifetime of the parent.
+///This way next() can be called multiple times, but still only one DownTMut will ever point to a particular node.
 pub struct DownTMut<'a,T:'a>{
     remaining:*mut GenTree<T>,
     nodeid:NodeIndex,
@@ -215,6 +240,8 @@ impl<'a,T:'a> DownTMut<'a,T>{
     }
 }
 
+///A level descriptor.
+///The root has depth 0.
 pub struct LevelDesc{
     height:usize,
     depth:usize
