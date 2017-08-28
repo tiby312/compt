@@ -131,7 +131,7 @@ impl<T> GenTree<T> {
 
         fn rec<T,F:FnMut(T)>(mut a:DownTMut<T>,func:&mut F){
             
-            match a.next(){
+            match a.get_mut_and_next(){
                 (nn,Some((left,right)))=>{
                     
                     rec(left,func);
@@ -261,6 +261,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
         ))
     }
+
     ///Create the children visitors and also return the node this visitor is pointing to.
     pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
 
