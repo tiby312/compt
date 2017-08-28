@@ -248,11 +248,24 @@ impl<'a,T:'a> DownTMut<'a,T>{
         a
     }
 
+    pub fn next<'c>(&'c mut self)->Option<(DownTMut<'c,T>,DownTMut<'c,T>)>{
+
+        if self.leveld.is_leaf(){
+            return None
+        }
+
+        let (l,r)=self.nodeid.get_children();
+        
+        Some((     
+            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+        ))
+    }
     ///Create the children visitors and also return the node this visitor is pointing to.
-    pub fn next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
+    pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
 
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        
+        //TODO reuse next()
         if self.leveld.is_leaf(){
             return (a,None)
         }
