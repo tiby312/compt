@@ -112,26 +112,28 @@ impl<T> GenTree<T> {
     pub fn bfs<F:FnMut(&T,&LevelDesc)>(&self,_func:&mut F){
         //unimplemented!();
     }
-
+    
     //Visit every node in dfs order.
-    pub fn dfs<F:FnMut(&T,&LevelDesc)>(&self,func:&mut F){
-        fn rec<T,F:FnMut(&T,&LevelDesc)>(a:DownT<T>,func:&mut F){
+    pub fn dfs<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
+
+        fn rec<'a,T:'a,F:FnMut(&'a T,&LevelDesc)>(a:DownT<'a,T>,func:&mut F){
             let l=a.get_level();
-            let n=a.get();
+            //let n=a.get();
             match a.next(){
                 Some((left,right))=>{
-                    func(n,&l);
+                    func(a.into_inner(),&l);
                     rec(left,func);
                     rec(right,func);
                 },
                 None=>{
-                    func(n,&l);
+                    func(a.into_inner(),&l);
                 }
             }
         }
-        let a=self.create_down();
-        rec(a,func);
+        let a2=self.create_down();
+        rec(a2,func);
     }
+
 
     //This will move every node to the passed closure in dfs order before consuming itself.
     pub fn dfs_consume<F:FnMut(T)>(mut self,func:&mut F){
@@ -214,6 +216,9 @@ impl<'a,T> DownT<'a,T>{
         &self.remaining.nodes[self.nodeid.0]
     }
 
+    pub fn into_inner(self)->&'a T{
+         &self.remaining.nodes[self.nodeid.0]        
+    }
     ///Create children visitors
     pub fn next(&self)->Option<(DownT<'a,T>,DownT<'a,T>)>{
 
@@ -229,8 +234,8 @@ impl<'a,T> DownT<'a,T>{
     }
 
     ///Get information about the level we are on.
-    pub fn get_level(&self)->&LevelDesc{
-        &self.leveld
+    pub fn get_level(&self)->LevelDesc{
+        self.leveld
     }
 
 }
@@ -296,6 +301,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
 
 ///A level descriptor.
 ///The root has depth 0.
+#[derive(Debug,Copy,Clone)]
 pub struct LevelDesc{
     height:usize,
     depth:usize
