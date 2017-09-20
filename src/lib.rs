@@ -113,7 +113,7 @@ impl<T> GenTree<T> {
         //unimplemented!();
     }
     
-    //Visit every node in dfs order.
+    //Visit every node in in order traversal.
     pub fn dfs<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
 
         fn rec<'a,T:'a,F:FnMut(&'a T,&LevelDesc)>(a:DownT<'a,T>,func:&mut F){
@@ -121,8 +121,10 @@ impl<T> GenTree<T> {
             //let n=a.get();
             match a.next(){
                 Some((left,right))=>{
-                    func(a.into_inner(),&l);
                     rec(left,func);
+
+                    func(a.into_inner(),&l);
+                    
                     rec(right,func);
                 },
                 None=>{
