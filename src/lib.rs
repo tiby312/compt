@@ -62,6 +62,15 @@ impl<T> GenTree<T> {
     }
 
 
+    pub fn from_vec(vec:Vec<T>,height:usize)->GenTree<T>{
+        let num_nodes=self::compute_num_nodes(height);
+        assert!(num_nodes==vec.len());
+
+        GenTree{
+            nodes:vec,
+            height:height
+        }
+    }
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
         assert!(height>=1);
