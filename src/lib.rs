@@ -108,9 +108,10 @@ impl<T> GenTree<T> {
 
 
     //Visit every node in bfs order.
-    //Unimplemented
-    pub fn bfs<F:FnMut(&T,&LevelDesc)>(&self,_func:&mut F){
-        //unimplemented!();
+    pub fn bfs<F:FnMut(&T)>(&self,func:&mut F){
+        for i in self.nodes.iter(){
+            func(i);
+        }
     }
     
     //Visit every node in in order traversal.
