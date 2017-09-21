@@ -73,7 +73,7 @@ impl<T> GenTree<T> {
     }
 
 
-    pub fn from_dfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
+    pub fn from_dfs<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
         let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
         tree.dfs_mut(&mut |node:&mut T|{
             *node=func();
@@ -81,7 +81,7 @@ impl<T> GenTree<T> {
         tree
     }
     ///Create a complete binary tree using the specified node generating function.
-    pub fn from_bfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
+    pub fn from_bfs<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
         assert!(height>=1);
         let num_nodes=self::compute_num_nodes(height);
 
