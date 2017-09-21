@@ -71,6 +71,15 @@ impl<T> GenTree<T> {
             height:height
         }
     }
+
+
+    pub fn from_dfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
+        let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
+        tree.dfs_mut(&mut |node:&mut T|{
+            *node=func();
+        });
+        tree
+    }
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:Fn()->T>(func:&mut F,height:usize)->GenTree<T>{
         assert!(height>=1);
@@ -114,6 +123,27 @@ impl<T> GenTree<T> {
         }
     }
     
+    pub fn dfs_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
+        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(mut a:DownTMut<'a,T>,func:&mut F){
+            
+            match a.into_get_mut_and_next(){
+                (xx,Some((left,right)))=>{
+                    rec(left,func);
+
+                    func(xx);
+                    
+                    rec(right,func);
+                },
+                (xx,None)=>{
+                    func(xx);
+                }
+            }
+        }
+        let a2=self.create_down_mut();
+        rec(a2,func);
+    
+    }
+
     //Visit every node in in order traversal.
     pub fn dfs<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
 
@@ -277,6 +307,25 @@ impl<'a,T:'a> DownTMut<'a,T>{
             DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
         ))
+    }
+
+
+    ///Create the children visitors and also return the node this visitor is pointing to.
+    pub fn into_get_mut_and_next<'c>(self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
+        //TODO code duplication
+
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //TODO reuse next()
+        if self.leveld.is_leaf(){
+            return (a,None)
+        }
+
+        let (l,r)=self.nodeid.get_children();
+        
+        (a,Some((     
+            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+        )))
     }
 
     ///Create the children visitors and also return the node this visitor is pointing to.
