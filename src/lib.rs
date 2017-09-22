@@ -80,6 +80,15 @@ impl<T> GenTree<T> {
         });
         tree
     }
+
+    pub fn from_dfs_backwards<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
+        let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
+        tree.dfs_backwards_mut(&mut |node:&mut T|{
+            *node=func();
+        });
+        tree
+    }
+
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
         assert!(height>=1);
@@ -143,6 +152,29 @@ impl<T> GenTree<T> {
         rec(a2,func);
     
     }
+      pub fn dfs_backwards_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
+        //TODO comgine with dfs_mut
+        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(mut a:DownTMut<'a,T>,func:&mut F){
+            
+            match a.into_get_mut_and_next(){
+                (xx,Some((left,right)))=>{
+                    rec(right,func);
+                    
+                    func(xx);
+                    
+                    rec(left,func);
+
+                },
+                (xx,None)=>{
+                    func(xx);
+                }
+            }
+        }
+        let a2=self.create_down_mut();
+        rec(a2,func);
+    
+    }
+
 
     //Visit every node in in order traversal.
     pub fn dfs<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
@@ -166,31 +198,6 @@ impl<T> GenTree<T> {
         let a2=self.create_down();
         rec(a2,func);
     }
-
-    //in order traversal backwards
-    pub fn dfs_backwards<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
-        //TODO reused code in dfs
-        fn rec<'a,T:'a,F:FnMut(&'a T,&LevelDesc)>(a:DownT<'a,T>,func:&mut F){
-            let l=a.get_level();
-            //let n=a.get();
-            match a.next(){
-                Some((left,right))=>{
-                    rec(right,func);
-
-                    func(a.into_inner(),&l);
-                    rec(left,func);
-                    
-                },
-                None=>{
-                    func(a.into_inner(),&l);
-                }
-            }
-        }
-        let a2=self.create_down();
-        rec(a2,func);
-    }
-
-
 
 
     //This will move every node to the passed closure in dfs order before consuming itself.
