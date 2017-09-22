@@ -167,6 +167,31 @@ impl<T> GenTree<T> {
         rec(a2,func);
     }
 
+    //in order traversal backwards
+    pub fn dfs_backwards<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
+        //TODO reused code in dfs
+        fn rec<'a,T:'a,F:FnMut(&'a T,&LevelDesc)>(a:DownT<'a,T>,func:&mut F){
+            let l=a.get_level();
+            //let n=a.get();
+            match a.next(){
+                Some((left,right))=>{
+                    rec(right,func);
+
+                    func(a.into_inner(),&l);
+                    rec(left,func);
+                    
+                },
+                None=>{
+                    func(a.into_inner(),&l);
+                }
+            }
+        }
+        let a2=self.create_down();
+        rec(a2,func);
+    }
+
+
+
 
     //This will move every node to the passed closure in dfs order before consuming itself.
     pub fn dfs_consume<F:FnMut(T)>(mut self,func:&mut F){
