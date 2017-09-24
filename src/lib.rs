@@ -46,6 +46,8 @@ pub struct GenTree<T> {
     height: usize,
 }
 
+
+
 ///Compute the number of nodes in a complete binary tree based on a height.
 pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
@@ -133,7 +135,7 @@ impl<T> GenTree<T> {
     }
     
     pub fn dfs_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
-        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(mut a:DownTMut<'a,T>,func:&mut F){
+        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(a:DownTMut<'a,T>,func:&mut F){
             
             match a.into_get_mut_and_next(){
                 (xx,Some((left,right)))=>{
@@ -152,9 +154,13 @@ impl<T> GenTree<T> {
         rec(a2,func);
     
     }
+
+
+
+
       pub fn dfs_backwards_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
         //TODO comgine with dfs_mut
-        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(mut a:DownTMut<'a,T>,func:&mut F){
+        fn rec<'a,T:'a,F:FnMut(&'a mut T)>( a:DownTMut<'a,T>,func:&mut F){
             
             match a.into_get_mut_and_next(){
                 (xx,Some((left,right)))=>{
@@ -176,7 +182,9 @@ impl<T> GenTree<T> {
     }
 
 
+    //TODO combine with dfs_comp
     //Visit every node in in order traversal.
+    /*
     pub fn dfs<'a,F:FnMut(&'a T,&LevelDesc)>(&'a self,func:&mut F){
 
         fn rec<'a,T:'a,F:FnMut(&'a T,&LevelDesc)>(a:DownT<'a,T>,func:&mut F){
@@ -186,17 +194,51 @@ impl<T> GenTree<T> {
                 Some((left,right))=>{
                     rec(left,func);
 
-                    func(a.into_inner(),&l);
+                    func(a.into_inner(),l);
                     
                     rec(right,func);
                 },
                 None=>{
-                    func(a.into_inner(),&l);
+                    func(a.into_inner(),l);
                 }
             }
         }
         let a2=self.create_down();
         rec(a2,func);
+    }*/
+
+
+    //Visit every node in in order traversal.
+    pub fn dfs<'a,F:FnMut(&'a T)>(&'a self,func:&mut F){
+        let mut func2=|a:&'a T,_:<Nothin as DX>::Item|{
+            func(a);
+        };
+        self.dfs_comp(&mut func2,Nothin{});
+    }
+
+    //Visit every node in in order traversal.
+    pub fn dfs_comp<'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(&'a self,func:&mut F,dx:X){
+
+        fn rec<'a,T:'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(a:DownT<'a,T>,func:&mut F,dx:X){
+            
+            match a.next(){
+                Some((left,right))=>{
+                    
+                    let aaa=dx.next();
+
+                    rec(left,func,aaa.clone());
+
+                    func(a.into_inner(),dx.get());
+                    
+                    rec(right,func,aaa);
+                },
+                None=>{
+                    func(a.into_inner(),dx.get());
+                }
+            }
+        }
+        let a2=self.create_down();
+        rec(a2,func,dx);
     }
 
 
@@ -299,10 +341,9 @@ impl<'a,T> DownT<'a,T>{
     }
 
     ///Get information about the level we are on.
-    pub fn get_level(&self)->LevelDesc{
-        self.leveld
+    pub fn get_level(&self)->&LevelDesc{
+        &self.leveld
     }
-
 }
 
 unsafe impl<'a,T:'a> std::marker::Sync for DownTMut<'a,T>{}
@@ -381,6 +422,41 @@ impl<'a,T:'a> DownTMut<'a,T>{
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
+}
+
+
+
+
+
+pub trait DX:std::clone::Clone{
+    type Item;
+    fn next(&self)->Self;
+    fn get(&self)->Self::Item;
+}
+
+#[derive(Debug,Copy,Clone)]
+struct LevelDescIter{
+    l:LevelDesc
+}
+impl DX for LevelDescIter{
+    type Item=LevelDesc;
+    fn next(&self)->LevelDescIter{
+        LevelDescIter{l:self.l.next_down()}
+    }
+    fn get(&self)->LevelDesc{
+        self.l
+    }
+}
+
+#[derive(Copy,Clone)]
+struct Nothin{
+}
+impl DX for Nothin{
+    type Item=();
+    fn next(&self)->Nothin{
+        Nothin{}
+    }
+    fn get(&self)->(){}
 }
 
 ///A level descriptor.
