@@ -435,7 +435,7 @@ pub trait DX:std::clone::Clone{
 }
 
 #[derive(Debug,Copy,Clone)]
-struct LevelDescIter{
+pub struct LevelDescIter{
     l:LevelDesc
 }
 impl DX for LevelDescIter{
