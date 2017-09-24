@@ -116,6 +116,9 @@ impl<T> GenTree<T> {
         unsafe { self.nodes.get_unchecked(0) }
     }
 
+    pub fn get_level_desc(&self)->LevelDesc{
+        LevelDesc{depth:0,height:self.height}
+    }
     //Create a visitor struct
     pub fn create_down(&self)->DownT<T>{
         DownT{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}}
@@ -437,6 +440,11 @@ pub trait DX:std::clone::Clone{
 #[derive(Debug,Copy,Clone)]
 pub struct LevelDescIter{
     l:LevelDesc
+}
+impl LevelDescIter{
+    pub fn new(l:LevelDesc)->LevelDescIter{
+        LevelDescIter{l:l}
+    }
 }
 impl DX for LevelDescIter{
     type Item=LevelDesc;
