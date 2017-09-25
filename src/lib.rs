@@ -49,16 +49,19 @@ pub struct GenTree<T> {
 
 
 ///Compute the number of nodes in a complete binary tree based on a height.
+#[inline(always)]
 pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
 }
 
 impl<T> GenTree<T> {
     
+    #[inline(always)]
     pub fn get_num_nodes(&self) -> usize {
         self.nodes.len()
     }
 
+    #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
     }
@@ -107,24 +110,29 @@ impl<T> GenTree<T> {
     }
 
     ///Guarenteed to be a root.
+    #[inline(always)]
     pub fn get_root_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { self.nodes.get_unchecked_mut(0) }
     }
 
     ///Guarenteed to be a root.
+    #[inline(always)]
     pub fn get_root<'a>(&'a self) -> &'a T {
         unsafe { self.nodes.get_unchecked(0) }
     }
 
+    #[inline(always)]
     pub fn get_level_desc(&self)->LevelDesc{
         LevelDesc{depth:0,height:self.height}
     }
     //Create a visitor struct
+    #[inline(always)]
     pub fn create_down(&self)->DownT<T>{
         DownT{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}}
     }
 
     //Create a mutable visitor struct
+    #[inline(always)]
     pub fn create_down_mut(&mut self)->DownTMut<T>{
         DownTMut{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
     }
@@ -302,6 +310,7 @@ impl<T> GenTree<T> {
 struct NodeIndex(pub usize); //todo dont make private
 
 impl NodeIndex{
+    #[inline(always)]
     fn get_children(self) -> (NodeIndex, NodeIndex) {
         let NodeIndex(a) = self;
         (NodeIndex(2 * a + 1), NodeIndex(2 * a + 2))
@@ -322,14 +331,17 @@ pub struct DownT<'a,T:'a>{
 impl<'a,T> DownT<'a,T>{
 
     ///Get the node the visitor is pointing to.
+    #[inline(always)]
     pub fn get(&self)->&T{
         &self.remaining.nodes[self.nodeid.0]
     }
 
+    #[inline(always)]
     pub fn into_inner(self)->&'a T{
          &self.remaining.nodes[self.nodeid.0]        
     }
     ///Create children visitors
+    #[inline(always)]
     pub fn next(&self)->Option<(DownT<'a,T>,DownT<'a,T>)>{
 
         if self.leveld.is_leaf(){
@@ -344,6 +356,7 @@ impl<'a,T> DownT<'a,T>{
     }
 
     ///Get information about the level we are on.
+    #[inline(always)]
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
@@ -366,6 +379,7 @@ pub struct DownTMut<'a,T:'a>{
 impl<'a,T:'a> DownTMut<'a,T>{
 
     ///Get the node the visitor is pointing to.
+    #[inline(always)]
     pub fn get_mut(&mut self)->&mut T{
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         a
@@ -405,6 +419,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
     }
 
     ///Create the children visitors and also return the node this visitor is pointing to.
+
     pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
 
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
@@ -422,6 +437,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
     }
 
     ///Get information about the level we are on.
+    #[inline(always)]
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
@@ -442,15 +458,18 @@ pub struct LevelDescIter{
     l:LevelDesc
 }
 impl LevelDescIter{
+    #[inline(always)]
     pub fn new(l:LevelDesc)->LevelDescIter{
         LevelDescIter{l:l}
     }
 }
 impl DX for LevelDescIter{
     type Item=LevelDesc;
+    #[inline(always)]
     fn next(&self)->LevelDescIter{
         LevelDescIter{l:self.l.next_down()}
     }
+    #[inline(always)]
     fn get(&self)->LevelDesc{
         self.l
     }
@@ -461,9 +480,11 @@ struct Nothin{
 }
 impl DX for Nothin{
     type Item=();
+    #[inline(always)]
     fn next(&self)->Nothin{
         Nothin{}
     }
+    #[inline(always)]
     fn get(&self)->(){}
 }
 
@@ -476,23 +497,28 @@ pub struct LevelDesc{
 }
 
 impl LevelDesc{
+    #[inline(always)]
     fn next_down(&self)->LevelDesc{
         LevelDesc{height:self.height,depth:self.depth+1}
     }
 
+    #[inline(always)]
     pub fn get_height(&self)->usize{
         self.height
     }
 
     ///Returns the height-depth
+    #[inline(always)]
     pub fn get_depth_left(&self)->usize{
         self.height-self.depth
     }
 
+    #[inline(always)]
     pub fn get_depth(&self)->usize{
         self.depth
     }  
 
+    #[inline(always)]
     pub fn is_leaf(&self)->bool{
         self.depth==self.height-1
     } 
