@@ -226,7 +226,7 @@ impl<T> GenTree<T> {
         self.dfs_comp(&mut func2,Nothin{});
     }
 
-    //Visit every node in in order traversal.
+    //Visit every node in pre order traversal.
     pub fn dfs_comp<'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(&'a self,func:&mut F,dx:X){
 
         fn rec<'a,T:'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(a:DownT<'a,T>,func:&mut F,dx:X){
@@ -236,10 +236,9 @@ impl<T> GenTree<T> {
                     
                     let aaa=dx.next();
 
-                    rec(left,func,aaa.clone());
 
                     func(a.into_inner(),dx.get());
-                    
+                    rec(left,func,aaa.clone());                    
                     rec(right,func,aaa);
                 },
                 None=>{
@@ -262,7 +261,6 @@ impl<T> GenTree<T> {
             match a.get_mut_and_next(){
                 (nn,Some((left,right)))=>{
                     
-                    rec(left,func);
                     {
                         let node=unsafe{
                             let mut node=std::mem::uninitialized::<T>();
@@ -273,6 +271,8 @@ impl<T> GenTree<T> {
                         func(node);
 
                     }
+                    
+                    rec(left,func);
                     rec(right,func);
                 },
                 (nn,None)=>{
