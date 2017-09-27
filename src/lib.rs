@@ -150,10 +150,9 @@ impl<T> GenTree<T> {
             
             match a.into_get_mut_and_next(){
                 (xx,Some((left,right)))=>{
-                    rec(left,func);
 
                     func(xx);
-                    
+                    rec(left,func);                    
                     rec(right,func);
                 },
                 (xx,None)=>{
@@ -177,9 +176,9 @@ impl<T> GenTree<T> {
                 (xx,Some((left,right)))=>{
                     rec(right,func);
                     
+                    rec(left,func);
                     func(xx);
                     
-                    rec(left,func);
 
                 },
                 (xx,None)=>{
