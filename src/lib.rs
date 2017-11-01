@@ -151,8 +151,8 @@ impl<T> GenTree<T> {
             match a.into_get_mut_and_next(){
                 (xx,Some((left,right)))=>{
 
-                    func(xx);
-                    rec(left,func);                    
+                    rec(left,func);    
+                    func(xx);                
                     rec(right,func);
                 },
                 (xx,None)=>{
@@ -175,9 +175,9 @@ impl<T> GenTree<T> {
             match a.into_get_mut_and_next(){
                 (xx,Some((left,right)))=>{
                     rec(right,func);
-                    
-                    rec(left,func);
                     func(xx);
+                    rec(left,func);
+                    
                     
 
                 },
@@ -236,9 +236,9 @@ impl<T> GenTree<T> {
                     
                     let aaa=dx.next();
 
-
+                    rec(left,func,aaa.clone());  
                     func(a.into_inner(),dx.get());
-                    rec(left,func,aaa.clone());                    
+                                      
                     rec(right,func,aaa);
                 },
                 None=>{
@@ -261,6 +261,7 @@ impl<T> GenTree<T> {
             match a.get_mut_and_next(){
                 (nn,Some((left,right)))=>{
                     
+                    rec(left,func);
                     {
                         let node=unsafe{
                             let mut node=std::mem::uninitialized::<T>();
@@ -272,7 +273,6 @@ impl<T> GenTree<T> {
 
                     }
                     
-                    rec(left,func);
                     rec(right,func);
                 },
                 (nn,None)=>{
