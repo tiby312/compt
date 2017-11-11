@@ -463,7 +463,7 @@ pub struct DownTMut<'a,T:'a>{
 
 pub struct WrapMut<'c,T:'c>(T,PhantomData<&'c T>);
 impl<'c,T:'c> WrapMut<'c,T>{
-    fn get_mut(&mut self)->&mut T{
+    pub fn get_mut(&mut self)->&mut T{
         &mut self.0
     }
 }
