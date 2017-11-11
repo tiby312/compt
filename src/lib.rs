@@ -470,14 +470,14 @@ impl<'c,T:'c> WrapMut<'c,T>{
 
 pub trait TreeIterator:Sized{
     type Item;
-    fn next(self)->(Self::Item,Option<(Self,Self)>);
+    fn next2(self)->(Self::Item,Option<(Self,Self)>);
     fn next_borrow_mut<'a>(&'a mut self)->WrapMut<'a,(Self::Item,Option<(Self,Self)>)>;
 }
 
 
 impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
-    fn next(self)->(Self::Item,Option<(Self,Self)>){
+    fn next2(self)->(Self::Item,Option<(Self,Self)>){
         
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         //TODO reuse next()
