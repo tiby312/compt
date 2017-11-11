@@ -7,30 +7,37 @@
 //!
 //!## Example
 //!```
-//!let mut tree=GenTree::from_bfs(&mut ||0.0,5);
+//!extern crate compt;
+//!fn main()
 //!{
-//!     let mut down=tree.create_down_mut();
+//!     let mut tree=compt::GenTree::from_bfs(&mut ||0.0,5);
 //!
-//!     {
-//!         let (_,b)=down.next();
-//!         let (mut left,mut right)=b.unwrap();
+//!        {
+//!            let mut down=tree.create_down_mut();
 //!
-//!         let (val1,_)=left.next();
-//!         let (val2,_)=right.next();
-//!         *val1=5.0;
-//!         *val2=4.0;
-//!     }
-//!     {
-//!         let (_,b)=down.next();
-//!         let (mut left,_)=b.unwrap();
-//!         *left.get_mut()=3.0;    
-//!     }
-//!}
-//!{
-//!     let down=tree.create_down();
-//!     let (left,right)=down.next().unwrap();
-//!     assert!(*left.get()==3.0);
-//!     assert!(*right.get()==4.0);
+//!            {
+//!                
+//!                let (mut left,mut right)=down.next().unwrap();
+//!                
+//!                //let (mut val1,_)=left.next().unwrap();
+//!                //let (mut val2,_)=right.next().unwrap();
+//!                *left.get_mut()=5.0;
+//!                *right.get_mut()=4.0;
+//!            
+//!            }
+//!            {
+//!                let b=down.next().unwrap();
+//!                let (mut left,_)=b;
+//!                *left.get_mut()=3.0;    
+//!            }
+//!        }
+//!        {
+//!            let down=tree.create_down();
+//!            let (left,right)=down.next().unwrap();
+//!            assert!(*left.get()==3.0);
+//!            assert!(*right.get()==4.0);
+//!        }
+//!
 //!}
 //!```
 //!
@@ -535,18 +542,18 @@ mod tests {
             let mut down=tree.create_down_mut();
 
             {
-                let (_,b)=down.next();
-                let (mut left,mut right)=b.unwrap();
                 
-                let (val1,_)=left.next();
-                let (val2,_)=right.next();
-                *val1=5.0;
-                *val2=4.0;
+                let (mut left,mut right)=down.next().unwrap();
+                
+                //let (mut val1,_)=left.next().unwrap();
+                //let (mut val2,_)=right.next().unwrap();
+                *left.get_mut()=5.0;
+                *right.get_mut()=4.0;
             
             }
             {
-                let (_,b)=down.next();
-                let (mut left,_)=b.unwrap();
+                let b=down.next().unwrap();
+                let (mut left,_)=b;
                 *left.get_mut()=3.0;    
             }
         }
