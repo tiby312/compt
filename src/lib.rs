@@ -471,7 +471,9 @@ impl<'c,T:'c> WrapMut<'c,T>{
 pub trait TreeIterator:Sized{
     type Item;
     fn next2(self)->(Self::Item,Option<(Self,Self)>);
-    fn next_borrow_mut<'a>(&'a mut self)->WrapMut<'a,(Self::Item,Option<(Self,Self)>)>;
+    fn next_borrow_mut(&mut self)->(Self::Item,Option<(Self,Self)>);
+
+    //fn next_borrow_mut<'a>(&'a mut self)->WrapMut<'a,(Self::Item,Option<(Self,Self)>)>;
 }
 
 
@@ -492,7 +494,22 @@ impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
         )))   
     }
+    fn next_borrow_mut(&mut self)->(Self::Item,Option<(Self,Self)>){
+        
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //TODO reuse next()
+        if self.leveld.is_leaf(){
+            return (a,None)
+        }
 
+        let (l,r)=self.nodeid.get_children();
+        
+        (a,Some((     
+            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+        )))   
+    }
+    /*
     fn next_borrow_mut<'c>(&'c mut self)->WrapMut<'c,(Self::Item,Option<(Self,Self)>)>{
  
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
@@ -508,7 +525,7 @@ impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
         ))),PhantomData)
     }
-    
+    */
 }
 
 
