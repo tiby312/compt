@@ -51,6 +51,7 @@ use std::marker::PhantomData;
 pub struct GenTree<T> {
     nodes: Vec<T>,
     height: usize,
+    first_leaf_index:NodeIndex
 }
 
 
@@ -80,7 +81,8 @@ impl<T> GenTree<T> {
 
         GenTree{
             nodes:vec,
-            height:height
+            height:height,
+            first_leaf_index:NodeIndex(num_nodes/2)
         }
     }
 
@@ -112,7 +114,8 @@ impl<T> GenTree<T> {
         }
         GenTree{
             nodes:vec,
-            height:height
+            height:height,
+            first_leaf_index:NodeIndex(num_nodes/2)
         }
     }
 
@@ -325,6 +328,82 @@ impl NodeIndex{
 
 
 
+
+/*
+mod nn{
+    use super::*;
+
+    pub struct DownTT<'a,T:'a>{
+        remaining:&'a GenTree<T>,
+        nodeid:NodeIndex,
+    }
+    impl<'a,T> Copy for DownTT<'a,T>{}
+    impl<'a,T> Clone for DownTT<'a,T>{
+        fn clone(&self) -> Self { *self }
+    }
+
+    
+    pub struct WrapMut<'c,T:'c>(T,PhantomData<&'c T>);
+    impl<'c,T:'c> WrapMut<'c,T>{
+        fn get_mut(&mut self)->&mut T{
+            &mut self.0
+        }
+    }
+    
+    pub trait TreeIterator:Iterator+Copy+Clone{
+    }
+
+    impl<'a,T:'a> TreeIterator for DownTT<'a,T>{
+
+    }
+
+    impl<'a,T:'a> Iterator for DownTT<'a,T>{
+        type Item=(&'a T,Self);
+        fn next(&mut self)->Option<Self::Item>{
+            if self.nodeid.0>=self.remaining.first_leaf_index.0{
+                return None
+            }
+
+
+            let s=&self.remaining.nodes[self.nodeid.0];
+            let (l,r)=self.nodeid.get_children();
+            Some((s,DownTT{remaining:self.remaining,nodeid:r}))
+        }
+    }
+
+    pub trait TreeIteratorMut:Iterator+Sized{
+        fn copy<'c>(&'c mut self)->WrapMut<'c,Self>;
+    }
+    pub struct DownTTMut<'a,T:'a>{
+        p:PhantomData<&'a mut GenTree<T>>,
+        remaining:*mut GenTree<T>,
+        nodeid:NodeIndex,
+    }
+    impl<'a,T:'a> TreeIteratorMut for DownTTMut<'a,T>{
+
+        fn copy<'c>(&'c mut self)->WrapMut<'c,DownTTMut<'a,T>>{
+            WrapMut(DownTTMut{p:PhantomData,remaining:self.remaining,nodeid:self.nodeid},PhantomData)
+            
+        }
+    }
+
+    impl<'a,T:'a> Iterator for DownTTMut<'a,T>{
+        type Item=(&'a mut T,Self);
+        fn next(&mut self)->Option<Self::Item>{
+            if self.nodeid.0>=unsafe{(*self.remaining).first_leaf_index.0}{
+                return None
+            }
+
+            let s=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]}; 
+            //let s=&self.remaining.nodes[self.nodeid.0];
+            let (l,r)=self.nodeid.get_children();
+            Some((s,DownTTMut{p:PhantomData,remaining:self.remaining,nodeid:r}))
+        }
+    }
+}
+*/
+
+
 ///A visitor struct. 
 ///Since this is a read only visitor, the children DownT's can safely have the same lifetime as their parent.
 ///This means multiple instances of DownT may end up pointing to the same node (if next() is called multiple times).
@@ -379,6 +458,57 @@ pub struct DownTMut<'a,T:'a>{
     nodeid:NodeIndex,
     leveld:LevelDesc,
     phantom:PhantomData<&'a T>
+}
+
+
+pub struct WrapMut<'c,T:'c>(T,PhantomData<&'c T>);
+impl<'c,T:'c> WrapMut<'c,T>{
+    fn get_mut(&mut self)->&mut T{
+        &mut self.0
+    }
+}
+
+pub trait TreeIterator:Sized{
+    type Item;
+    fn next(self)->(Self::Item,Option<(Self,Self)>);
+    fn next_borrow_mut<'a>(&'a mut self)->WrapMut<'a,(Self::Item,Option<(Self,Self)>)>;
+}
+
+
+impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
+    type Item=&'a mut T;
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //TODO reuse next()
+        if self.leveld.is_leaf(){
+            return (a,None)
+        }
+
+        let (l,r)=self.nodeid.get_children();
+        
+        (a,Some((     
+            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+        )))   
+    }
+
+    fn next_borrow_mut<'c>(&'c mut self)->WrapMut<'c,(Self::Item,Option<(Self,Self)>)>{
+ 
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //TODO reuse next()
+        if self.leveld.is_leaf(){
+            return WrapMut((a,None),PhantomData)
+        }
+
+        let (l,r)=self.nodeid.get_children();
+        
+        WrapMut((a,Some((     
+            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+        ))),PhantomData)
+    }
+    
 }
 
 
