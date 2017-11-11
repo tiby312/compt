@@ -468,19 +468,21 @@ impl<'c,T:'c> WrapMut<'c,T>{
     }
 }
 
-pub trait TreeIterator:Sized{
+pub trait TreeIterator<'a>:Sized{
     type Item;
-    fn next2(self)->(Self::Item,Option<(Self,Self)>);
-    fn next_borrow_mut(&mut self)->(Self::Item,Option<(Self,Self)>);
+    fn next2(self)->(&'a mut Self::Item,Option<(Self,Self)>);
+    fn next_borrow_mut(&mut self)->(&'a mut Self::Item,Option<(Self,Self)>);
 
     fn get_level(&self)->&LevelDesc;
+
+   
     //fn next_borrow_mut<'a>(&'a mut self)->WrapMut<'a,(Self::Item,Option<(Self,Self)>)>;
 }
 
 
-impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
-    type Item=&'a mut T;
-    fn next2(self)->(Self::Item,Option<(Self,Self)>){
+impl<'a,T:'a> TreeIterator<'a> for DownTMut<'a,T>{
+    type Item=T;
+    fn next2(self)->(&'a mut Self::Item,Option<(Self,Self)>){
         
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         //TODO reuse next()
@@ -495,7 +497,7 @@ impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
         )))   
     }
-    fn next_borrow_mut(&mut self)->(Self::Item,Option<(Self,Self)>){
+    fn next_borrow_mut(&mut self)->(&'a mut Self::Item,Option<(Self,Self)>){
         
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         //TODO reuse next()
@@ -516,6 +518,7 @@ impl<'a,T:'a> TreeIterator for DownTMut<'a,T>{
     fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
+    
     /*
     fn next_borrow_mut<'c>(&'c mut self)->WrapMut<'c,(Self::Item,Option<(Self,Self)>)>{
  
