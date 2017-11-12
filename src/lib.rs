@@ -271,7 +271,7 @@ impl<T> GenTree<T> {
         
         //TODO verify this
 
-        fn rec<T,F:FnMut(T)>(mut a:DownTMut<T>,func:&mut F){
+        fn rec<T,F:FnMut(T)>(a:DownTMut<T>,func:&mut F){
             
 
             match a.next(){
@@ -578,6 +578,7 @@ impl<'a,T:'a> TreeIterator<'a> for DownTMut<'a,T>{
 */
 
 
+///Used to create children visitors. Existance implies children exist. 
 pub struct Sec<'a,T:'a>{
     remaining:*mut GenTree<T>,
     nodeid:NodeIndex,
@@ -601,7 +602,6 @@ impl<'a,T:'a> Sec<'a,T>{
     }
 
     ///Create the children visitors and also return the node this visitor is pointing to.
-
     pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,(DownTMut<'c,T>,DownTMut<'c,T>)){
 
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
@@ -641,8 +641,10 @@ impl<'a,T:'a> DownTMut<'a,T>{
     pub fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
+
+    ///Returns either the contents of this node, or a struct that allows
+    ///retrieval of children nodes.
     pub fn next<'c>(self)->Either<&'c mut T,Sec<'c,T>>{
-        //TODO reuse next()
         if self.leveld.is_leaf(){
             let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
             Left(a)
@@ -650,60 +652,6 @@ impl<'a,T:'a> DownTMut<'a,T>{
             Right(Sec{remaining:self.remaining,nodeid:self.nodeid,leveld:self.leveld,phantom:PhantomData})
         }
     }
-
-    /*
-    pub fn next<'c>(&'c mut self)->Option<(DownTMut<'c,T>,DownTMut<'c,T>)>{
-
-        if self.leveld.is_leaf(){
-            return None
-        }
-
-        let (l,r)=self.nodeid.get_children();
-        
-        Some((     
-            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
-            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
-        ))
-    }*/
-
-    /*
-    ///Create the children visitors and also return the node this visitor is pointing to.
-    pub fn into_get_mut_and_next<'c>(self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
-        //TODO code duplication
-
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        //TODO reuse next()
-        if self.leveld.is_leaf(){
-            return (a,None)
-        }
-
-        let (l,r)=self.nodeid.get_children();
-        
-        (a,Some((     
-            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
-            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
-        )))
-    }
-
-    ///Create the children visitors and also return the node this visitor is pointing to.
-
-    pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,Option<(DownTMut<'c,T>,DownTMut<'c,T>)>){
-
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        //TODO reuse next()
-        if self.leveld.is_leaf(){
-            return (a,None)
-        }
-
-        let (l,r)=self.nodeid.get_children();
-        
-        (a,Some((     
-            DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
-            DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
-        )))
-    }
-    */
-
 }
 
 
