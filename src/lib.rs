@@ -10,24 +10,18 @@
 //!extern crate compt;
 //!fn main()
 //!{
-//!     let mut tree=compt::GenTree::from_bfs(&mut ||0.0,5);
-//!
+//!        let mut tree=compt::GenTree::from_bfs(&mut ||0.0,5);
 //!        {
 //!            let mut down=tree.create_down_mut();
-//!
+//!            let mut nn=down.next().1.unwrap();
 //!            {
 //!                
-//!                let (mut left,mut right)=down.next().unwrap();
-//!                
-//!                //let (mut val1,_)=left.next().unwrap();
-//!                //let (mut val2,_)=right.next().unwrap();
+//!                let (mut left,mut right)=nn.get_mut_and_next();
 //!                *left.get_mut()=5.0;
 //!                *right.get_mut()=4.0;
-//!            
 //!            }
 //!            {
-//!                let b=down.next().unwrap();
-//!                let (mut left,_)=b;
+//!                let (mut left,_)=nn.into_get_mut_and_next();
 //!                *left.get_mut()=3.0;    
 //!            }
 //!        }
@@ -42,11 +36,6 @@
 //!```
 //!
 
-extern crate either;
-
-use either::Either;
-use Either::Left;
-use Either::Right;
 use std::marker::PhantomData;
 
 
@@ -740,26 +729,18 @@ mod tests {
     use super::*;
     #[test]
     fn it_works() {
-
         let mut tree=GenTree::from_bfs(&mut ||0.0,5);
-
         {
-            let mut down=tree.create_down_mut();
-
+            let down=tree.create_down_mut();
             let mut nn=down.next().1.unwrap();
             {
                 
                 let (mut left,mut right)=nn.get_mut_and_next();
-                
-                //let (mut val1,_)=left.next().unwrap();
-                //let (mut val2,_)=right.next().unwrap();
                 *left.get_mut()=5.0;
                 *right.get_mut()=4.0;
-            
             }
             {
                 let (mut left,_)=nn.into_get_mut_and_next();
-                
                 *left.get_mut()=3.0;    
             }
         }
