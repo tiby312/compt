@@ -164,11 +164,11 @@ impl<T> GenTree<T> {
         fn rec<'a,T:'a,F:FnMut(&'a mut T)>(a:DownTMut<'a,T>,func:&mut F){
             
             match a.next(){
-                Left(xx)=>{
+                (xx,None)=>{
                     func(xx)
                 },
-                Right(sec)=>{
-                    let (xx,(left,right))=sec.into_get_mut_and_next();
+                (xx,Some(sec))=>{
+                    let (left,right)=sec.into_get_mut_and_next();
                     func(xx);
                     rec(left,func);                    
                     rec(right,func); 
@@ -188,11 +188,11 @@ impl<T> GenTree<T> {
         //TODO comgine with dfs_mut
         fn rec<'a,T:'a,F:FnMut(&'a mut T)>( a:DownTMut<'a,T>,func:&mut F){
             match a.next(){
-                Left(xx)=>{
+                (xx,None)=>{
                     func(xx)
                 },
-                Right(sec)=>{
-                    let (xx,(left,right))=sec.into_get_mut_and_next();
+                (xx,Some(sec))=>{
+                    let (left,right)=sec.into_get_mut_and_next();
                     rec(right,func);
                     rec(left,func);
                     func(xx);
@@ -275,7 +275,7 @@ impl<T> GenTree<T> {
             
 
             match a.next(){
-                Left(nn)=>{
+                (nn,None)=>{
                     {
                         let node=unsafe{
                             let mut node=std::mem::uninitialized::<T>();
@@ -287,8 +287,8 @@ impl<T> GenTree<T> {
 
                     }
                 },
-                Right(sec)=>{
-                    let (nn,(left,right))=sec.into_get_mut_and_next();
+                (nn,Some(sec))=>{
+                    let (left,right)=sec.into_get_mut_and_next();
                     {
                         let node=unsafe{
                             let mut node=std::mem::uninitialized::<T>();
@@ -587,32 +587,32 @@ pub struct Sec<'a,T:'a>{
 }
 impl<'a,T:'a> Sec<'a,T>{
     ///Create the children visitors and also return the node this visitor is pointing to.
-    pub fn into_get_mut_and_next<'c>(self)->(&'c mut T,(DownTMut<'c,T>,DownTMut<'c,T>)){
+    pub fn into_get_mut_and_next<'c>(self)->(DownTMut<'c,T>,DownTMut<'c,T>){
         //TODO code duplication
 
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         
 
         let (l,r)=self.nodeid.get_children();
         
-        (a,(     
+        (     
             DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
-        ))
+        )
     }
 
     ///Create the children visitors and also return the node this visitor is pointing to.
-    pub fn get_mut_and_next<'c>(&'c mut self)->(&'c mut T,(DownTMut<'c,T>,DownTMut<'c,T>)){
+    pub fn get_mut_and_next<'c>(&'c mut self)->(DownTMut<'c,T>,DownTMut<'c,T>){
 
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        //let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         
 
         let (l,r)=self.nodeid.get_children();
         
-        (a,(     
+        (     
             DownTMut{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
             DownTMut{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
-        ))
+        )
     }
 }
 
@@ -644,12 +644,12 @@ impl<'a,T:'a> DownTMut<'a,T>{
 
     ///Returns either the contents of this node, or a struct that allows
     ///retrieval of children nodes.
-    pub fn next<'c>(self)->Either<&'c mut T,Sec<'c,T>>{
+    pub fn next<'c>(self)->(&'c mut T,Option<Sec<'c,T>>){
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         if self.leveld.is_leaf(){
-            let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-            Left(a)
+            (a,None)
         }else{
-            Right(Sec{remaining:self.remaining,nodeid:self.nodeid,leveld:self.leveld,phantom:PhantomData})
+            (a,Some(Sec{remaining:self.remaining,nodeid:self.nodeid,leveld:self.leveld,phantom:PhantomData}))
         }
     }
 }
@@ -746,10 +746,10 @@ mod tests {
         {
             let mut down=tree.create_down_mut();
 
-            let mut nn=down.next().right().unwrap();
+            let mut nn=down.next().1.unwrap();
             {
                 
-                let (_,(mut left,mut right))=nn.get_mut_and_next();
+                let (mut left,mut right)=nn.get_mut_and_next();
                 
                 //let (mut val1,_)=left.next().unwrap();
                 //let (mut val2,_)=right.next().unwrap();
@@ -758,7 +758,7 @@ mod tests {
             
             }
             {
-                let (_,(mut left,_))=nn.into_get_mut_and_next();
+                let (mut left,_)=nn.into_get_mut_and_next();
                 
                 *left.get_mut()=3.0;    
             }
