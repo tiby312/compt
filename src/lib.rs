@@ -298,17 +298,19 @@ impl NodeIndex{
 
 
 
-
+trait WrapTrait:CTreeIterator{
+    fn clone(&self)->Self;
+}
 
 pub use wrap::Wrap;
 mod wrap{
     use super::*;
     use std::mem::ManuallyDrop;
-    pub struct Wrap<'a,T:DownTMutTrait+'a>{
+    pub struct Wrap<'a,T:CTreeIterator+'a>{
         a:ManuallyDrop<T>,
         phantom:PhantomData<&'a mut T>
     }
-    impl<'a,T:DownTMutTrait+'a> Wrap<'a,T>{
+    impl<'a,T:CTreeIterator+'a> Wrap<'a,T>{
         pub fn new(a:&'a mut T)->Wrap<'a,T>{
             let mut m=unsafe{std::mem::uninitialized()};
             unsafe{std::ptr::copy(a,&mut m,1)};
@@ -316,7 +318,7 @@ mod wrap{
         }
     }
     
-    impl<'a,T:DownTMutTrait+'a> DownTMutTrait for Wrap<'a,T>{
+    impl<'a,T:CTreeIterator+'a> CTreeIterator for Wrap<'a,T>{
         type Item=T::Item;
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             let Wrap{a,phantom}=self;
@@ -340,20 +342,18 @@ mod wrap{
             self.a.get_level()
         }
 
-        fn get_mut(&self)->Self::Item{
-            self.a.get_mut()
+        fn get(&self)->Self::Item{
+            self.a.get()
         }
     }
 }
 
 
-pub trait DownTMutTrait:Sized{
+pub trait CTreeIterator:Sized{
     type Item;
     fn next(self)->(Self::Item,Option<(Self,Self)>);
     fn get_level(&self)->&LevelDesc;
-    fn get_mut(&self)->Self::Item;
-    //fn get_mut(&mut self)->Self::Item;
-    
+    fn get(&self)->Self::Item;
 }
 
 unsafe impl<'a,T:'a> std::marker::Send for DownTMut2<'a,T>{}
@@ -369,7 +369,14 @@ pub struct DownTMut2<'a,T:'a>{
     phantom:PhantomData<&'a T>
 }
 
-impl<'a,T:'a> DownTMutTrait for DownTMut2<'a,T>{
+/*
+impl<'a,T:'a> WrapTrait for DownTMut2<'a,T>{
+    fn clone(&self)->Self{
+        DownTMut2{remaining:self.remaining,nodeid:self.nodeid,leveld:self.leveld,phantom:PhantomData}
+    }
+}*/
+
+impl<'a,T:'a> CTreeIterator for DownTMut2<'a,T>{
     type Item=&'a mut T;
     ///Returns either the contents of this node, or a struct that allows
     ///retrieval of children nodes.
@@ -394,7 +401,7 @@ impl<'a,T:'a> DownTMutTrait for DownTMut2<'a,T>{
         &self.leveld
     }
     #[inline(always)]
-    fn get_mut(&self)->Self::Item{
+    fn get(&self)->Self::Item{
         let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
         a
     }
@@ -407,7 +414,7 @@ pub struct DownT2<'a,T:'a>{
     leveld:LevelDesc,
 }
 
-impl<'a,T:'a> DownTMutTrait for DownT2<'a,T>{
+impl<'a,T:'a> CTreeIterator for DownT2<'a,T>{
     type Item=&'a T;
     ///Returns either the contents of this node, or a struct that allows
     ///retrieval of children nodes.
@@ -432,7 +439,7 @@ impl<'a,T:'a> DownTMutTrait for DownT2<'a,T>{
         &self.leveld
     }
     #[inline(always)]
-    fn get_mut(&self)->Self::Item{
+    fn get(&self)->Self::Item{
         let a=unsafe{& (*self.remaining).nodes[self.nodeid.0]};
         a
     }
@@ -442,16 +449,16 @@ impl<'a,T:'a> DownTMutTrait for DownT2<'a,T>{
 
 
 
-pub struct ZippedDownTMut<T1:DownTMutTrait,T2:DownTMutTrait>{
+pub struct ZippedDownTMut<T1:CTreeIterator,T2:CTreeIterator>{
     a:T1,
     b:T2,
 }
-impl<T1:DownTMutTrait,T2:DownTMutTrait>  ZippedDownTMut<T1,T2>{
+impl<T1:CTreeIterator,T2:CTreeIterator>  ZippedDownTMut<T1,T2>{
     pub fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
         ZippedDownTMut{a:a,b:b}
     }
 }
-impl<T1:DownTMutTrait,T2:DownTMutTrait> DownTMutTrait for ZippedDownTMut<T1,T2>{
+impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for ZippedDownTMut<T1,T2>{
     type Item=(T1::Item,T2::Item);
     fn next(self)->(Self::Item,Option<(Self,Self)>){
         let (a_item,a_rest)=self.a.next();
@@ -475,9 +482,9 @@ impl<T1:DownTMutTrait,T2:DownTMutTrait> DownTMutTrait for ZippedDownTMut<T1,T2>{
         self.a.get_level()
     }
 
-    fn get_mut(&self)->Self::Item{
-        let a=self.a.get_mut();
-        let b=self.b.get_mut();
+    fn get(&self)->Self::Item{
+        let a=self.a.get();
+        let b=self.b.get();
         (a,b)
     }
 }
