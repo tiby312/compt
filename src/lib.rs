@@ -141,6 +141,10 @@ impl<T> GenTree<T> {
         DownTMut{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
     }
 
+    #[inline(always)]
+    pub fn create_down_mut2(&mut self)->DownTMut2<T>{
+        DownTMut2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
+    }
 
     //Visit every node in bfs order.
     pub fn bfs<F:FnMut(&T)>(&self,func:&mut F){
@@ -219,6 +223,7 @@ impl<T> GenTree<T> {
         let a2=self.create_down();
         rec(a2,func);
     }*/
+    
 
 
     //Visit every node in in order traversal.
@@ -351,6 +356,7 @@ impl NodeIndex{
         (NodeIndex(2 * a + 1), NodeIndex(2 * a + 2))
     }
 }
+
 
 
 
@@ -643,7 +649,161 @@ impl<'a,T:'a> DownTMut<'a,T>{
     }
 }
 
+/* TODO use this?
+pub fn unsafe_unwrap<T>(a:Option<T>)->T{
+    match a{
+        Some(x)=>{
+            return x
+        },
+        None=>{
+            std::intrinsics::unreachable();
+            debug_assert!("panicked!");
+        }
+    }
+}*/
 
+pub use wrap::Wrap;
+mod wrap{
+    use super::*;
+    use std::mem::ManuallyDrop;
+    pub struct Wrap<'a,T:DownTMutTrait+'a>{
+        a:ManuallyDrop<T>,
+        phantom:PhantomData<&'a mut T>
+    }
+    impl<'a,T:DownTMutTrait+'a> Wrap<'a,T>{
+        pub fn new(a:&'a mut T)->Wrap<'a,T>{
+            let mut m=unsafe{std::mem::uninitialized()};
+            unsafe{std::ptr::copy(a,&mut m,1)};
+            Wrap{a:ManuallyDrop::new(m),phantom:PhantomData}
+        }
+    }
+    
+    impl<'a,T:DownTMutTrait+'a> DownTMutTrait for Wrap<'a,T>{
+        type Item=T::Item;
+        fn get_mut_and_next(self)->(Self::Item,Option<(Self,Self)>){
+            let Wrap{a,phantom}=self;
+            let a=ManuallyDrop::into_inner(a);
+
+            let (item,mm)=a.get_mut_and_next();
+
+            match mm{
+                Some((left,right))=>{
+                    let left=Wrap{a:ManuallyDrop::new(left),phantom:PhantomData};
+                    let right=Wrap{a:ManuallyDrop::new(right),phantom:PhantomData};
+                    return (item,Some((left,right)));
+                },
+                None=>{
+                    return (item,None);
+                }
+            }
+        }
+        #[inline(always)]
+        fn get_level(&self)->&LevelDesc{
+            self.a.get_level()
+        }
+
+        fn get_mut(&mut self)->Self::Item{
+            self.a.get_mut()
+        }
+    }
+}
+
+
+pub trait DownTMutTrait:Sized+Send{
+    type Item;
+    fn get_mut_and_next(self)->(Self::Item,Option<(Self,Self)>);
+    fn get_level(&self)->&LevelDesc;
+    fn get_mut(&mut self)->Self::Item;
+    
+}
+
+unsafe impl<'a,T:'a> std::marker::Send for DownTMut2<'a,T>{}
+
+
+///A mutable visitor struct.
+///Unlike DownT, the children's lifetime may be smaller that the lifetime of the parent.
+///This way next() can be called multiple times, but still only one DownTMut will ever point to a particular node.
+pub struct DownTMut2<'a,T:'a>{
+    remaining:*mut GenTree<T>,
+    nodeid:NodeIndex,
+    leveld:LevelDesc,
+    phantom:PhantomData<&'a T>
+}
+
+impl<'a,T:'a> DownTMutTrait for DownTMut2<'a,T>{
+    type Item=&'a mut T;
+    ///Returns either the contents of this node, or a struct that allows
+    ///retrieval of children nodes.
+     fn get_mut_and_next(self)->(Self::Item,Option<(Self,Self)>){
+ 
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        if self.leveld.is_leaf(){
+            (a,None)
+        }else{
+ 
+            let (l,r)=self.nodeid.get_children();
+            
+            let j=(     
+                DownTMut2{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+                DownTMut2{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+            );
+            (a,Some(j))
+        }
+    }
+    #[inline(always)]
+    fn get_level(&self)->&LevelDesc{
+        &self.leveld
+    }
+    #[inline(always)]
+    fn get_mut(&mut self)->Self::Item{
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        a
+    }
+
+}
+
+
+
+
+pub struct ZippedDownTMut<T1:DownTMutTrait,T2:DownTMutTrait>{
+    a:T1,
+    b:T2,
+}
+impl<T1:DownTMutTrait,T2:DownTMutTrait>  ZippedDownTMut<T1,T2>{
+    pub fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
+        ZippedDownTMut{a:a,b:b}
+    }
+}
+impl<T1:DownTMutTrait,T2:DownTMutTrait> DownTMutTrait for ZippedDownTMut<T1,T2>{
+    type Item=(T1::Item,T2::Item);
+    fn get_mut_and_next(self)->(Self::Item,Option<(Self,Self)>){
+        let (a_item,a_rest)=self.a.get_mut_and_next();
+        let (b_item,b_rest)=self.b.get_mut_and_next();
+
+        let item=(a_item,b_item);
+        match a_rest{
+            Some(a_rest)=>{
+                let b_rest=b_rest.unwrap();
+                let f1=ZippedDownTMut{a:a_rest.0,b:b_rest.0};
+                let f2=ZippedDownTMut{a:a_rest.1,b:b_rest.1};
+                (item,Some((f1,f2)))
+            },
+            None=>{
+                (item,None)
+            }
+        }
+    }
+    #[inline(always)]
+    fn get_level(&self)->&LevelDesc{
+        self.a.get_level()
+    }
+
+    fn get_mut(&mut self)->Self::Item{
+        let a=self.a.get_mut();
+        let b=self.b.get_mut();
+        (a,b)
+    }
+}
 
 
 
