@@ -36,8 +36,6 @@
 //!```
 //!
 
-use std::marker::PhantomData;
-
 
 ///The complete binary tree. Internally stores the nodes in a Vec<T>.
 ///Height is atleast 1.
@@ -68,32 +66,25 @@ impl<T> GenTree<T> {
         self.height
     }
 
-
-    pub fn from_vec(vec:Vec<T>,height:usize)->GenTree<T>{
-        let num_nodes=self::compute_num_nodes(height);
-        assert!(num_nodes==vec.len());
-
-        GenTree{
-            nodes:vec,
-            height:height,
-            first_leaf_index:NodeIndex(num_nodes/2)
-        }
-    }
-
-
     pub fn from_dfs<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
         let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
-        tree.dfs_mut(&mut |node:&mut T|{
-            *node=func();
-        });
+        {
+            let t=tree.create_down_mut();
+            t.dfs_preorder(&mut |_:&LevelDesc,node:&mut T|{
+                *node=func();
+            });
+        }
         tree
     }
 
     pub fn from_dfs_backwards<F:FnMut()->T>(func:&mut F,height:usize)->GenTree<T>{
         let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
-        tree.dfs_backwards_mut(&mut |node:&mut T|{
-            *node=func();
-        });
+        {
+            let t=tree.create_down_mut();
+            t.dfs_postorder(&mut |_:&LevelDesc,node:&mut T|{
+                *node=func();
+            });
+        }
         tree
     }
 
@@ -112,6 +103,21 @@ impl<T> GenTree<T> {
             first_leaf_index:NodeIndex(num_nodes/2)
         }
     }
+
+    //Visit every node in bfs order.
+    pub fn bfs<F:FnMut(&T)>(&self,func:&mut F){
+        for i in self.nodes.iter(){
+            func(i);
+        }
+    }
+    //Visit every node in bfs order.
+    pub fn bfs_mut<F:FnMut(&mut T)>(&mut self,func:&mut F){
+        for i in self.nodes.iter_mut(){
+            func(i);
+        }
+    }
+    
+
 
     ///Guarenteed to be a root.
     #[inline(always)]
@@ -140,143 +146,16 @@ impl<T> GenTree<T> {
         DownTMut2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
     }
 
-    //Visit every node in bfs order.
-    pub fn bfs<F:FnMut(&T)>(&self,func:&mut F){
-        for i in self.nodes.iter(){
-            func(i);
-        }
-    }
-    
-    pub fn dfs_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
-        fn rec<'a,T:'a,F:FnMut(&'a mut T)>(a:DownTMut2<'a,T>,func:&mut F){
-            
-            match a.next(){
-                (xx,None)=>{
-                    func(xx)
-                },
-                (xx,Some((left,right)))=>{
-                    //let (left,right)=sec.into_get_mut_and_next();
-                    func(xx);
-                    rec(left,func);                    
-                    rec(right,func); 
-                }
-            }
-            
-        }
-        let a2=self.create_down_mut();
-        rec(a2,func);
-    
-    }
+    pub fn into_dfs_preorder<F:FnMut(&LevelDesc,T)>(mut self,func:&mut F){
 
-
-
-
-      pub fn dfs_backwards_mut<'a,F:FnMut(&'a mut T)>(&'a mut self,func:&mut F){
-        //TODO comgine with dfs_mut
-        fn rec<'a,T:'a,F:FnMut(&'a mut T)>( a:DownTMut2<'a,T>,func:&mut F){
-            match a.next(){
-                (xx,None)=>{
-                    func(xx)
-                },
-                (xx,Some((left,right)))=>{
-                    //let (left,right)=sec.into_get_mut_and_next();
-                    rec(right,func);
-                    rec(left,func);
-                    func(xx);
-                }
-            }
-            
-        }
-        let a2=self.create_down_mut();
-        rec(a2,func);
-    
-    }
-
-
-
-    //Visit every node in in order traversal.
-    pub fn dfs<'a,F:FnMut(&'a T)>(&'a self,func:&mut F){
-        let mut func2=|a:&'a T,_:<Nothin as DX>::Item|{
-            func(a);
-        };
-        self.dfs_comp(&mut func2,Nothin{});
-    }
-
-    //Visit every node in pre order traversal.
-    pub fn dfs_comp<'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(&'a self,func:&mut F,dx:X){
-
-        fn rec<'a,T:'a,I,X:DX<Item=I>,F:FnMut(&'a T,I)>(a:DownT2<'a,T>,func:&mut F,dx:X){
-            
-            
-            match a.next(){
-                (nn,Some((left,right)))=>{
-                    
-                    let aaa=dx.next();
-
-
-                    func(nn,dx.get());
-                    rec(left,func,aaa.clone());                    
-                    rec(right,func,aaa);
-                },
-                (nn,None)=>{
-                    func(nn,dx.get());
-                }
-            }
-        }
-        let a2=self.create_down();
-        rec(a2,func,dx);
-    }
-
-
-    //This will move every node to the passed closure in dfs order before consuming itself.
-    pub fn dfs_consume<F:FnMut(T)>(mut self,func:&mut F){
-        
-        //TODO verify this
-
-        fn rec<T,F:FnMut(T)>(a:DownTMut2<T>,func:&mut F){
-            
-
-            match a.next(){
-                (nn,None)=>{
-                    {
-                        let node=unsafe{
-                            let mut node=std::mem::uninitialized::<T>();
-                            std::ptr::copy(nn,&mut node,1);
-                            node
-                        };
-
-                        func(node);
-
-                    }
-                },
-                (nn,Some((left,right)))=>{
-                    //let (left,right)=sec.into_get_mut_and_next();
-                    {
-                        let node=unsafe{
-                            let mut node=std::mem::uninitialized::<T>();
-                            std::ptr::copy(nn,&mut node,1);
-                            node
-                        };
-
-                        func(node);
-
-                    }
-                    
-                    rec(left,func);
-                    rec(right,func);
-                }
-            }
-            
-        }
         {
-            let a=self.create_down_mut();
-            rec(a,func);
+            let t=DownTConsume{remaining:&mut self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData};
+            t.dfs_preorder(func);
         }
         for a in self.nodes.drain(..){
             std::mem::forget(a);
         }
-    }   
-
+    }
 }
 
 
@@ -285,7 +164,7 @@ impl<T> GenTree<T> {
 ///It is never used to index into the tree, but a user might have some use for it.
 ///The nodes in the tree are kept in the tree in bfs order.
 #[derive(Copy,Clone,Debug)]
-struct NodeIndex(pub usize); //todo dont make private
+struct NodeIndex(usize); //todo dont make private
 
 impl NodeIndex{
     #[inline(always)]
@@ -298,70 +177,63 @@ impl NodeIndex{
 
 
 
-trait WrapTrait:CTreeIterator{
-    fn clone(&self)->Self;
-}
 
-pub use wrap::Wrap;
-mod wrap{
-    use super::*;
-    use std::mem::ManuallyDrop;
-    pub struct Wrap<'a,T:CTreeIterator+'a>{
-        a:ManuallyDrop<T>,
-        phantom:PhantomData<&'a mut T>
-    }
-    impl<'a,T:CTreeIterator+'a> Wrap<'a,T>{
-        pub fn new(a:&'a mut T)->Wrap<'a,T>{
-            let mut m=unsafe{std::mem::uninitialized()};
-            unsafe{std::ptr::copy(a,&mut m,1)};
-            Wrap{a:ManuallyDrop::new(m),phantom:PhantomData}
-        }
-    }
-    
-    impl<'a,T:CTreeIterator+'a> CTreeIterator for Wrap<'a,T>{
-        type Item=T::Item;
-        fn next(self)->(Self::Item,Option<(Self,Self)>){
-            let Wrap{a,phantom}=self;
-            let a=ManuallyDrop::into_inner(a);
-
-            let (item,mm)=a.next();
-
-            match mm{
-                Some((left,right))=>{
-                    let left=Wrap{a:ManuallyDrop::new(left),phantom:PhantomData};
-                    let right=Wrap{a:ManuallyDrop::new(right),phantom:PhantomData};
-                    return (item,Some((left,right)));
-                },
-                None=>{
-                    return (item,None);
-                }
-            }
-        }
-        #[inline(always)]
-        fn get_level(&self)->&LevelDesc{
-            self.a.get_level()
-        }
-
-        fn get(&self)->Self::Item{
-            self.a.get()
-        }
-    }
-}
-
-
+///This is what all tree visitors implement.
 pub trait CTreeIterator:Sized{
     type Item;
     fn next(self)->(Self::Item,Option<(Self,Self)>);
     fn get_level(&self)->&LevelDesc;
-    fn get(&self)->Self::Item;
+
+    ///Combine two tree visitors that have the same depth left.
+    fn zip<F:CTreeIterator>(self,f:F)->ZippedDownTMut<Self,F>{
+        ZippedDownTMut::new(self,f)
+    }
+
+    ///left,right,root
+    fn dfs_preorder<F:FnMut(&LevelDesc,Self::Item)>(self,func:&mut F){
+        fn rec<C:CTreeIterator,F:FnMut(&LevelDesc,C::Item)>(a:C,func:&mut F){
+            let d=*a.get_level();
+            let (nn,rest)=a.next();
+            func(&d,nn);
+            match rest{
+                Some((left,right))=>{
+                    rec(left,func);
+                    rec(right,func);
+                },
+                None=>{
+
+                }
+            }
+        }
+        rec(self,func);
+    }
+
+    ///right,left,root
+    fn dfs_postorder<F:FnMut(&LevelDesc,Self::Item)>(self,func:&mut F){
+        fn rec<C:CTreeIterator,F:FnMut(&LevelDesc,C::Item)>(a:C,func:&mut F){
+            let d=*a.get_level();
+            let (nn,rest)=a.next();
+            match rest{
+                Some((left,right))=>{
+                    rec(right,func);
+                    rec(left,func);
+                },
+                None=>{
+
+                }
+            }
+            func(&d,nn);
+        }
+        rec(self,func);
+    }
 }
+
+use std::marker::PhantomData;
+
 
 unsafe impl<'a,T:'a> std::marker::Send for DownTMut2<'a,T>{}
 
-
-///A mutable visitor struct.
-///Unlike DownT, the children's lifetime may be smaller that the lifetime of the parent.
-///This way next() can be called multiple times, but still only one DownTMut will ever point to a particular node.
+///Tree visitor that returns a mutable reference to each element
 pub struct DownTMut2<'a,T:'a>{
     remaining:*mut GenTree<T>,
     nodeid:NodeIndex,
@@ -369,12 +241,6 @@ pub struct DownTMut2<'a,T:'a>{
     phantom:PhantomData<&'a T>
 }
 
-/*
-impl<'a,T:'a> WrapTrait for DownTMut2<'a,T>{
-    fn clone(&self)->Self{
-        DownTMut2{remaining:self.remaining,nodeid:self.nodeid,leveld:self.leveld,phantom:PhantomData}
-    }
-}*/
 
 impl<'a,T:'a> CTreeIterator for DownTMut2<'a,T>{
     type Item=&'a mut T;
@@ -400,14 +266,11 @@ impl<'a,T:'a> CTreeIterator for DownTMut2<'a,T>{
     fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
-    #[inline(always)]
-    fn get(&self)->Self::Item{
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        a
-    }
 
 }
 
+
+///Tree visitor that returns a reference to each element
 pub struct DownT2<'a,T:'a>{
     remaining:&'a GenTree<T>,
     nodeid:NodeIndex,
@@ -420,7 +283,7 @@ impl<'a,T:'a> CTreeIterator for DownT2<'a,T>{
     ///retrieval of children nodes.
      fn next(self)->(Self::Item,Option<(Self,Self)>){
  
-        let a=unsafe{&(*self.remaining).nodes[self.nodeid.0]};
+        let a=unsafe{&(*self.remaining).nodes.get_unchecked(self.nodeid.0)};
         if self.leveld.is_leaf(){
             (a,None)
         }else{
@@ -438,23 +301,18 @@ impl<'a,T:'a> CTreeIterator for DownT2<'a,T>{
     fn get_level(&self)->&LevelDesc{
         &self.leveld
     }
-    #[inline(always)]
-    fn get(&self)->Self::Item{
-        let a=unsafe{& (*self.remaining).nodes[self.nodeid.0]};
-        a
-    }
 
 }
 
 
-
-
+///Tree visitor that zips up two seperate visitors.
 pub struct ZippedDownTMut<T1:CTreeIterator,T2:CTreeIterator>{
     a:T1,
     b:T2,
 }
 impl<T1:CTreeIterator,T2:CTreeIterator>  ZippedDownTMut<T1,T2>{
-    pub fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
+    fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
+        assert!(a.get_level().get_depth_left()==b.get_level().get_depth_left());
         ZippedDownTMut{a:a,b:b}
     }
 }
@@ -482,55 +340,91 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for ZippedDownTMut<T1,T2>{
         self.a.get_level()
     }
 
-    fn get(&self)->Self::Item{
-        let a=self.a.get();
-        let b=self.b.get();
-        (a,b)
+}
+
+
+pub use wrap::Wrap;
+mod wrap{
+    use super::*;
+
+    ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
+    pub struct Wrap<'a,T:'a>{
+        a:DownTMut2<'a,T>
+    }
+    impl<'a,T:'a> Wrap<'a,T>{
+        pub fn new(a:&'a mut DownTMut2<T>)->Wrap<'a,T>{
+            
+            let k=DownTMut2{remaining:a.remaining,nodeid:a.nodeid,leveld:a.leveld,phantom:a.phantom};
+ 
+            Wrap{a:k}
+        }
+    }
+    
+    impl<'a,T:'a> CTreeIterator for Wrap<'a,T>{
+        type Item=&'a mut T;
+        fn next(self)->(Self::Item,Option<(Self,Self)>){
+            let Wrap{a}=self;
+            //let a=ManuallyDrop::into_inner(a);
+
+            let (item,mm)=a.next();
+
+            match mm{
+                Some((left,right))=>{
+                    let left=Wrap{a:left};
+                    let right=Wrap{a:right};
+                    return (item,Some((left,right)));
+                },
+                None=>{
+                    return (item,None);
+                }
+            }
+        }
+        #[inline(always)]
+        fn get_level(&self)->&LevelDesc{
+            self.a.get_level()
+        }
     }
 }
 
 
-
-pub trait DX:std::clone::Clone{
-    type Item;
-    fn next(&self)->Self;
-    fn get(&self)->Self::Item;
+struct DownTConsume<'a,T:'a>{
+    remaining:*mut GenTree<T>,
+    nodeid:NodeIndex,
+    leveld:LevelDesc,
+    phantom:PhantomData<&'a T>
 }
 
-#[derive(Debug,Copy,Clone)]
-pub struct LevelDescIter{
-    l:LevelDesc
-}
-impl LevelDescIter{
-    #[inline(always)]
-    pub fn new(l:LevelDesc)->LevelDescIter{
-        LevelDescIter{l:l}
+
+impl<'a,T:'a> CTreeIterator for DownTConsume<'a,T>{
+    type Item=T;
+    ///Returns either the contents of this node, or a struct that allows
+    ///retrieval of children nodes.
+     fn next(self)->(Self::Item,Option<(Self,Self)>){
+ 
+        let mut val=unsafe{std::mem::uninitialized()};
+        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+        unsafe{std::ptr::copy(&mut val,a,1)};
+
+        if self.leveld.is_leaf(){
+            (val,None)
+        }else{
+ 
+            let (l,r)=self.nodeid.get_children();
+            
+            let j=(     
+                DownTConsume{remaining:self.remaining,nodeid:l,leveld:self.leveld.next_down(),phantom:PhantomData},
+                DownTConsume{remaining:self.remaining,nodeid:r,leveld:self.leveld.next_down(),phantom:PhantomData}
+            );
+            (val,Some(j))
+        }
     }
-}
-impl DX for LevelDescIter{
-    type Item=LevelDesc;
     #[inline(always)]
-    fn next(&self)->LevelDescIter{
-        LevelDescIter{l:self.l.next_down()}
-    }
-    #[inline(always)]
-    fn get(&self)->LevelDesc{
-        self.l
+    fn get_level(&self)->&LevelDesc{
+        &self.leveld
     }
 }
 
-#[derive(Copy,Clone)]
-struct Nothin{
-}
-impl DX for Nothin{
-    type Item=();
-    #[inline(always)]
-    fn next(&self)->Nothin{
-        Nothin{}
-    }
-    #[inline(always)]
-    fn get(&self)->(){}
-}
+
 
 ///A level descriptor.
 ///The root has depth 0.
