@@ -39,11 +39,10 @@
 
 ///The complete binary tree. Internally stores the nodes in a Vec<T>.
 ///Height is atleast 1.
-#[derive(Debug,Clone)]
 pub struct GenTree<T> {
     nodes: Vec<T>,
     height: usize,
-    first_leaf_index:NodeIndex
+    //first_leaf_index:NodeIndex
 }
 
 
@@ -100,7 +99,7 @@ impl<T> GenTree<T> {
         GenTree{
             nodes:vec,
             height:height,
-            first_leaf_index:NodeIndex(num_nodes/2)
+            //first_leaf_index:NodeIndex(num_nodes/2)
         }
     }
 
