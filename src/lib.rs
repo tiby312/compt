@@ -69,7 +69,7 @@ impl<T> GenTree<T> {
         let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
         {
             let t=tree.create_down_mut();
-            t.dfs_preorder(&mut |_:&LevelDesc,node:&mut T|{
+            t.dfs_preorder(&mut |node:&mut T|{
                 *node=func();
             });
         }
@@ -80,7 +80,7 @@ impl<T> GenTree<T> {
         let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
         {
             let t=tree.create_down_mut();
-            t.dfs_postorder(&mut |_:&LevelDesc,node:&mut T|{
+            t.dfs_postorder(&mut |node:&mut T|{
                 *node=func();
             });
         }
@@ -103,13 +103,16 @@ impl<T> GenTree<T> {
         }
     }
 
-    //Visit every node in bfs order.
+    ///Visit every node in bfs order.
+    ///Due to underlying representation of the tree, this is just a fast loop.
     pub fn bfs<F:FnMut(&T)>(&self,func:&mut F){
         for i in self.nodes.iter(){
             func(i);
         }
     }
-    //Visit every node in bfs order.
+
+    ///Visit every node in bfs order.
+    ///Due to underlying representation of the tree, this is just a fast loop.
     pub fn bfs_mut<F:FnMut(&mut T)>(&mut self,func:&mut F){
         for i in self.nodes.iter_mut(){
             func(i);
@@ -117,7 +120,7 @@ impl<T> GenTree<T> {
     }
     
 
-
+    /*
     ///Guarenteed to be a root.
     #[inline(always)]
     pub fn get_root_mut<'a>(&'a mut self) -> &'a mut T {
@@ -129,23 +132,29 @@ impl<T> GenTree<T> {
     pub fn get_root<'a>(&'a self) -> &'a T {
         unsafe { self.nodes.get_unchecked(0) }
     }
-
+    */
+    
     #[inline(always)]
     pub fn get_level_desc(&self)->LevelDesc{
         LevelDesc{depth:0,height:self.height}
     }
+    
     //Create a visitor struct
+
+
     #[inline(always)]
     pub fn create_down(&self)->DownT2<T>{
-        DownT2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}}
+        let k=DownT2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height}};
+        k
     }
     //Create a mutable visitor struct
     #[inline(always)]
     pub fn create_down_mut(&mut self)->DownTMut2<T>{
-        DownTMut2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData}
+        let k=DownTMut2{remaining:self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData};
+        k
     }
 
-    pub fn into_dfs_preorder<F:FnMut(&LevelDesc,T)>(mut self,func:&mut F){
+    pub fn into_dfs_preorder<F:FnMut(T)>(mut self,func:&mut F){
 
         {
             let t=DownTConsume{remaining:&mut self,nodeid:NodeIndex(0),leveld:LevelDesc{depth:0,height:self.height},phantom:PhantomData};
@@ -181,7 +190,7 @@ impl NodeIndex{
 pub trait CTreeIterator:Sized{
     type Item;
     fn next(self)->(Self::Item,Option<(Self,Self)>);
-    fn get_level(&self)->&LevelDesc;
+    //fn get_level(&self)->&LevelDesc;
 
     ///Combine two tree visitors that have the same depth left.
     fn zip<F:CTreeIterator>(self,f:F)->ZippedDownTMut<Self,F>{
@@ -189,11 +198,11 @@ pub trait CTreeIterator:Sized{
     }
 
     ///left,right,root
-    fn dfs_preorder<F:FnMut(&LevelDesc,Self::Item)>(self,func:&mut F){
-        fn rec<C:CTreeIterator,F:FnMut(&LevelDesc,C::Item)>(a:C,func:&mut F){
-            let d=*a.get_level();
+    fn dfs_preorder<F:FnMut(Self::Item)>(self,func:&mut F){
+        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+            //let d=*a.get_level();
             let (nn,rest)=a.next();
-            func(&d,nn);
+            func(nn);
             match rest{
                 Some((left,right))=>{
                     rec(left,func);
@@ -208,9 +217,9 @@ pub trait CTreeIterator:Sized{
     }
 
     ///right,left,root
-    fn dfs_postorder<F:FnMut(&LevelDesc,Self::Item)>(self,func:&mut F){
-        fn rec<C:CTreeIterator,F:FnMut(&LevelDesc,C::Item)>(a:C,func:&mut F){
-            let d=*a.get_level();
+    fn dfs_postorder<F:FnMut(Self::Item)>(self,func:&mut F){
+        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+            //let d=*a.get_level();
             let (nn,rest)=a.next();
             match rest{
                 Some((left,right))=>{
@@ -221,7 +230,7 @@ pub trait CTreeIterator:Sized{
 
                 }
             }
-            func(&d,nn);
+            func(nn);
         }
         rec(self,func);
     }
@@ -261,13 +270,40 @@ impl<'a,T:'a> CTreeIterator for DownTMut2<'a,T>{
             (a,Some(j))
         }
     }
-    #[inline(always)]
-    fn get_level(&self)->&LevelDesc{
-        &self.leveld
+ 
+}
+
+pub struct LevelIter<T:CTreeIterator>{
+    a:T,
+    leveld:LevelDesc
+}
+impl <T:CTreeIterator> LevelIter<T>{
+    pub fn new(a:T,leveld:LevelDesc)->LevelIter<T>{
+        //let LevelIter{a,leveld:_}=self;
+        return LevelIter{a,leveld};
+    }
+}
+impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
+    type Item=(LevelDesc,T::Item);
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        let LevelIter{a,leveld}=self;
+        let (nn,rest)=a.next();
+
+        let r=(leveld,nn);
+        match rest{
+            Some((left,right))=>{
+                let ln=leveld.next_down();
+                let ll=LevelIter{a:left,leveld:ln};
+                let rr=LevelIter{a:right,leveld:ln};
+                (r,Some((ll,rr)))
+            },
+            None=>{
+                (r,None)
+            }
+        }
     }
 
 }
-
 
 ///Tree visitor that returns a reference to each element
 pub struct DownT2<'a,T:'a>{
@@ -296,10 +332,7 @@ impl<'a,T:'a> CTreeIterator for DownT2<'a,T>{
             (a,Some(j))
         }
     }
-    #[inline(always)]
-    fn get_level(&self)->&LevelDesc{
-        &self.leveld
-    }
+ 
 
 }
 
@@ -311,7 +344,7 @@ pub struct ZippedDownTMut<T1:CTreeIterator,T2:CTreeIterator>{
 }
 impl<T1:CTreeIterator,T2:CTreeIterator>  ZippedDownTMut<T1,T2>{
     fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
-        assert!(a.get_level().get_depth_left()==b.get_level().get_depth_left());
+        //assert!(a.get_level().get_depth_left()==b.get_level().get_depth_left());
         ZippedDownTMut{a:a,b:b}
     }
 }
@@ -322,22 +355,19 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for ZippedDownTMut<T1,T2>{
         let (b_item,b_rest)=self.b.next();
 
         let item=(a_item,b_item);
-        match a_rest{
-            Some(a_rest)=>{
-                let b_rest=b_rest.unwrap();
+        match (a_rest,b_rest){
+            (Some(a_rest),Some(b_rest))=>{
+                //let b_rest=b_rest.unwrap();
                 let f1=ZippedDownTMut{a:a_rest.0,b:b_rest.0};
                 let f2=ZippedDownTMut{a:a_rest.1,b:b_rest.1};
                 (item,Some((f1,f2)))
             },
-            None=>{
+            _ =>{
                 (item,None)
             }
         }
     }
-    #[inline(always)]
-    fn get_level(&self)->&LevelDesc{
-        self.a.get_level()
-    }
+
 
 }
 
@@ -348,19 +378,20 @@ mod wrap{
 
     ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
     pub struct Wrap<'a,T:'a>{
-        a:DownTMut2<'a,T>
+        a:LevelIter<DownTMut2<'a,T>>
     }
     impl<'a,T:'a> Wrap<'a,T>{
-        pub fn new(a:&'a mut DownTMut2<T>)->Wrap<'a,T>{
-            
-            let k=DownTMut2{remaining:a.remaining,nodeid:a.nodeid,leveld:a.leveld,phantom:a.phantom};
+        pub fn new(a:&'a mut LevelIter<DownTMut2<T>>)->Wrap<'a,T>{
+            let inner=&a.a;
+            let k=DownTMut2{remaining:inner.remaining,nodeid:inner.nodeid,leveld:inner.leveld,phantom:inner.phantom};
  
-            Wrap{a:k}
+            let j=LevelIter{a:k,leveld:a.leveld};
+            Wrap{a:j}
         }
     }
     
     impl<'a,T:'a> CTreeIterator for Wrap<'a,T>{
-        type Item=&'a mut T;
+        type Item=(LevelDesc,&'a mut T);
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             let Wrap{a}=self;
             //let a=ManuallyDrop::into_inner(a);
@@ -378,10 +409,7 @@ mod wrap{
                 }
             }
         }
-        #[inline(always)]
-        fn get_level(&self)->&LevelDesc{
-            self.a.get_level()
-        }
+       
     }
 }
 
@@ -417,10 +445,7 @@ impl<'a,T:'a> CTreeIterator for DownTConsume<'a,T>{
             (val,Some(j))
         }
     }
-    #[inline(always)]
-    fn get_level(&self)->&LevelDesc{
-        &self.leveld
-    }
+   
 }
 
 
@@ -469,12 +494,13 @@ mod tests {
         let mut tree=GenTree::from_bfs(&mut ||0.0,5);
         {
             let down=tree.create_down_mut();
-            let mut nn=down.next().1.unwrap();
+            let l=down.next();
+            l.0=5;
+            
             {
-                
-                let (mut left,mut right)=nn.get_mut_and_next();
-                *left.get_mut()=5.0;
-                *right.get_mut()=4.0;
+                let (mut left,mut right)=l.1.unwrap();
+                left.next().0=6;
+                rights.next().0=7;
             }
             {
                 let (mut left,_)=nn.into_get_mut_and_next();
