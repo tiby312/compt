@@ -192,7 +192,7 @@ pub trait CTreeIterator:Sized{
     fn next(self)->(Self::Item,Option<(Self,Self)>);
     //fn get_level(&self)->&LevelDesc;
 
-    ///Combine two tree visitors that have the same depth left.
+    ///Combine two tree visitors.
     fn zip<F:CTreeIterator>(self,f:F)->ZippedDownTMut<Self,F>{
         ZippedDownTMut::new(self,f)
     }
@@ -465,25 +465,15 @@ impl LevelDesc{
     }
 
     #[inline(always)]
-    pub fn get_height(&self)->usize{
-        self.height
-    }
-
-    ///Returns the height-depth
-    #[inline(always)]
-    pub fn get_depth_left(&self)->usize{
-        self.height-self.depth
-    }
-
-    #[inline(always)]
     pub fn get_depth(&self)->usize{
         self.depth
-    }  
-
+    } 
+    
     #[inline(always)]
-    pub fn is_leaf(&self)->bool{
+    fn is_leaf(&self)->bool{
         self.depth==self.height-1
     } 
+
 }
 
 #[cfg(test)]
