@@ -278,6 +278,7 @@ pub struct LevelIter<T:CTreeIterator>{
     leveld:LevelDesc
 }
 impl <T:CTreeIterator> LevelIter<T>{
+    #[inline(always)]
     pub fn new(a:T,leveld:LevelDesc)->LevelIter<T>{
         //let LevelIter{a,leveld:_}=self;
         return LevelIter{a,leveld};
@@ -343,6 +344,7 @@ pub struct ZippedDownTMut<T1:CTreeIterator,T2:CTreeIterator>{
     b:T2,
 }
 impl<T1:CTreeIterator,T2:CTreeIterator>  ZippedDownTMut<T1,T2>{
+    #[inline(always)]
     fn new(a:T1,b:T2)->ZippedDownTMut<T1,T2>{
         //assert!(a.get_level().get_depth_left()==b.get_level().get_depth_left());
         ZippedDownTMut{a:a,b:b}
@@ -381,6 +383,7 @@ mod wrap{
         a:LevelIter<DownTMut2<'a,T>>
     }
     impl<'a,T:'a> Wrap<'a,T>{
+        #[inline(always)]
         pub fn new(a:&'a mut LevelIter<DownTMut2<T>>)->Wrap<'a,T>{
             let inner=&a.a;
             let k=DownTMut2{remaining:inner.remaining,nodeid:inner.nodeid,leveld:inner.leveld,phantom:inner.phantom};
