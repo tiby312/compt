@@ -17,7 +17,7 @@
 //!With a regular slice, getting one mutable reference to an element will borrow the
 //!entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
 //!in bfs order. Therefore one can safely assume that if (starting at the root),
-//!one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2,
+//!one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
 //!to get *two* mutable references to the children,
 //!they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
 //!
@@ -30,6 +30,7 @@
 //!        //Create a tree of height 2 with elemenets set to zero.
 //!        let mut tree=compt::GenTree::from_bfs(||0,2);
 //!        {
+//!            //Create a mutable tree visitor.
 //!            let mut down=tree.create_down_mut();
 //!            let (e,nn)=down.next();
 //!            //Set the root to 1.
@@ -40,6 +41,7 @@
 //!            *right.next().0=3;
 //!        }
 //!        {
+//!            //Create a immutable tree visitor.
 //!            let down=tree.create_down();
 //!            //Iterate dfs over our constructed tree.
 //!            let mut v=Vec::new();
