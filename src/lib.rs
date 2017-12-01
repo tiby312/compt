@@ -1,7 +1,8 @@
+//!## Summary
 //! A Complete Binary Tree library.
-//! It is internally represented as a 1D array.
+//! It is internally represented as a 1D vec.
 //! Provides a way to get mutable references to children nodes simultaneously. Useful for parallelizing divide and conquer style problems.
-//!
+//! There is no api to add and remove nodes. The existence of the tree implies that 2k-1 elements already exist. It is a full tree.
 //! Provides tree visitors that implement the below trait. They can be combined together using zip().
 //!
 //!```
@@ -12,11 +13,17 @@
 //!    fn next(self)->(Self::Item,Option<(Self,Self)>);
 //!}
 //!```
+//!
+//!## Goals
+//!
+//!To create a safe and compact complete binary tree data structure that provides an api
+//!that parallel algorithms can exploit.
+//!
 //!## Unsafety
 //!
 //!With a regular slice, getting one mutable reference to an element will borrow the
 //!entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
-//!in bfs order. Therefore one can safely assume that if (starting at the root),
+//!in BFS order. Therefore one can safely assume that if (starting at the root),
 //!one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
 //!to get *two* mutable references to the children,
 //!they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
@@ -32,11 +39,12 @@
 //!        {
 //!            //Create a mutable tree visitor.
 //!            let mut down=tree.create_down_mut();
-//!            let (e,nn)=down.next();
+//!            //Call the iterator's next() function.
+//!            let (e,maybe_children)=down.next();
 //!            //Set the root to 1.
 //!            *e=1;
 //!            //Set the children to 2 and 3.
-//!            let (mut left,mut right)=nn.unwrap();
+//!            let (mut left,mut right)=maybe_children.unwrap();
 //!            *left.next().0=2;
 //!            *right.next().0=3;
 //!        }
@@ -56,6 +64,8 @@
 
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
+///Elements stored in BFS order.
+///Has 2^k-1 elements where k is the height.
 pub struct GenTree<T> {
     nodes: Vec<T>,
     height: usize,
@@ -69,11 +79,6 @@ pub fn compute_num_nodes(height:usize)->usize{
 
 impl<T> GenTree<T> {
     
-    #[inline(always)]
-    pub fn get_num_nodes(&self) -> usize {
-        self.nodes.len()
-    }
-
     #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
@@ -120,7 +125,7 @@ impl<T> GenTree<T> {
         }
     }
 
-    ///Visit every node in bfs order.
+    ///Visit every node in BFS order.
     ///Due to underlying representation of the tree, this is just a fast loop.
     pub fn bfs<F:FnMut(&T)>(&self,mut func:F){
         for i in self.nodes.iter(){
@@ -128,7 +133,7 @@ impl<T> GenTree<T> {
         }
     }
 
-    ///Visit every node in bfs order.
+    ///Visit every node in BFS order.
     ///Due to underlying representation of the tree, this is just a fast loop.
     pub fn bfs_mut<F:FnMut(&mut T)>(&mut self,mut func:F){
         for i in self.nodes.iter_mut(){
@@ -142,32 +147,37 @@ impl<T> GenTree<T> {
         LevelDesc{depth:0}
     }
     
-
-    ///Create a immutable visitor struct
     #[inline(always)]
+    ///Create a immutable visitor struct
     pub fn create_down(&self)->DownT<T>{
         let k=DownT{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len())};
         k
     }
 
-    ///Create a mutable visitor struct
     #[inline(always)]
+    ///Create a mutable visitor struct
     pub fn create_down_mut(&mut self)->DownTMut<T>{
         let k=DownTMut{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len()),phantom:PhantomData};
         k
     }
 
-    ///Consume the tree and return each element to the user in dfs order.
     #[inline(always)]
+    ///Consume the tree and return each element to the user in dfs order.
     pub fn into_dfs_preorder<F:FnMut(T)>(self,func:F){
         cons::downt_into_dfs_preorder(self,func);
+    }
+
+    #[inline(always)]
+    ///Returns the underlying elements as they are, in BFS order.
+    pub fn get_nodes(&self)->&[T]{
+        &self.nodes
     }
 }
 
 
 
 ///Visitor functions use this type to determine what node to visit.
-///The nodes in the tree are kept in the tree in bfs order.
+///The nodes in the tree are kept in the tree in BFS order.
 #[derive(Copy,Clone,Debug)]
 struct NodeIndex(usize);
 
@@ -431,8 +441,8 @@ mod cons{
 }
 
 
+#[derive(Copy,Clone)]
 ///A level descriptor. This is passed to LevelIter.
-#[derive(Debug,Copy,Clone)]
 pub struct LevelDesc{
     depth:usize
 }
