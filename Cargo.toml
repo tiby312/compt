@@ -6,5 +6,6 @@ description = "A complete binary tree library in 1d vec layout"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/tiby312/compt"
 keywords = ["tree", "binary"]
+readme = "README.md"
 
 [dependencies]
