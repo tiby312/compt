@@ -285,6 +285,10 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
     }
 }
 
+
+unsafe impl<'a,T:'a> std::marker::Send for DownT<'a,T>{}
+
+
 ///Tree visitor that returns a reference to each element in the tree.
 pub struct DownT<'a,T:'a>{
     remaining:&'a GenTree<T>,
@@ -354,6 +358,7 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for ZippedDownTMut<T1,T2>{
 
 
 pub use wrap::Wrap;
+pub use wrap::Wrap2;
 mod wrap{
     use super::*;
 
@@ -383,6 +388,47 @@ mod wrap{
                 Some((left,right))=>{
                     let left=Wrap{a:left};
                     let right=Wrap{a:right};
+                    return (item,Some((left,right)));
+                },
+                None=>{
+                    return (item,None);
+                }
+            }
+        }
+    }
+
+
+    ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
+    pub struct Wrap2<'a,T:'a>{
+        a:DownT<'a,T>
+    }
+    impl<'a,T:'a> Wrap2<'a,T>{
+        #[inline(always)]
+        pub fn new(a:&'a DownT<'a,T>)->Wrap2<'a,T>{
+            //let inner=&a.a;
+            //let k=DownTMut{remaining:inner.remaining,nodeid:inner.nodeid,first_leaf:inner.first_leaf,phantom:inner.phantom};
+ 
+            //let j=LevelIter{a:k,leveld:a.leveld};
+            let ff=unsafe{
+                let mut ff=std::mem::uninitialized();
+                std::ptr::copy(a, &mut ff, 1);
+                ff
+            };
+            Wrap2{a:ff}
+        }
+    }
+    
+    impl<'a,T:'a> CTreeIterator for Wrap2<'a,T>{
+        type Item=&'a T;
+        fn next(self)->(Self::Item,Option<(Self,Self)>){
+            let Wrap2{a}=self;
+  
+            let (item,mm)=a.next();
+
+            match mm{
+                Some((left,right))=>{
+                    let left=Wrap2{a:left};
+                    let right=Wrap2{a:right};
                     return (item,Some((left,right)));
                 },
                 None=>{
