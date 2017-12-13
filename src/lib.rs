@@ -66,7 +66,7 @@
 ///Height is atleast 1.
 ///Elements stored in BFS order.
 ///Has 2^k-1 elements where k is the height.
-pub struct GenTree<T> {
+pub struct GenTree<T:Send> {
     nodes: Vec<T>,
     height: usize,
 }
@@ -77,7 +77,7 @@ pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
 }
 
-impl<T> GenTree<T> {
+impl<T:Send> GenTree<T> {
     
     #[inline(always)]
     pub fn get_height(&self) -> usize {
@@ -172,6 +172,13 @@ impl<T> GenTree<T> {
     pub fn get_nodes(&self)->&[T]{
         &self.nodes
     }
+
+    #[inline(always)]
+    ///Returns the underlying elements as they are, in BFS order.
+    pub fn into_nodes(self)->Vec<T>{
+        let GenTree{nodes,height}=self;
+        nodes
+    }
 }
 
 
@@ -193,7 +200,6 @@ impl NodeIndex{
 }
 
 
-
 ///All binary tree visitors implement this.
 pub trait CTreeIterator:Sized{
     type Item;
@@ -208,6 +214,8 @@ pub trait CTreeIterator:Sized{
         ZippedDownTMut::new(self,f)
     }
 
+
+    //TODO make iterators instead!
     ///Calls the closure in dfs preorder (left,right,root).
     fn dfs_preorder<F:FnMut(Self::Item)>(self,mut func:F){
         fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
@@ -250,10 +258,10 @@ pub trait CTreeIterator:Sized{
 use std::marker::PhantomData;
 
 
-unsafe impl<'a,T:'a> std::marker::Send for DownTMut<'a,T>{}
+unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
-pub struct DownTMut<'a,T:'a>{
+pub struct DownTMut<'a,T:Send+'a>{
     remaining:*mut GenTree<T>,
     nodeid:NodeIndex,
     first_leaf:NodeIndex,
@@ -261,7 +269,7 @@ pub struct DownTMut<'a,T:'a>{
 }
 
 
-impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
+impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
     
     fn next(self)->(Self::Item,Option<(Self,Self)>){
@@ -286,17 +294,17 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
 }
 
 
-unsafe impl<'a,T:'a> std::marker::Send for DownT<'a,T>{}
+//unsafe impl<'a,T:Send+'a> std::marker::Send for DownT<'a,T>{}
 
 
 ///Tree visitor that returns a reference to each element in the tree.
-pub struct DownT<'a,T:'a>{
+pub struct DownT<'a,T:Send+'a>{
     remaining:&'a GenTree<T>,
     nodeid:NodeIndex,
     first_leaf:NodeIndex,
 }
 
-impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
+impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
     type Item=&'a T;
 
     fn next(self)->(Self::Item,Option<(Self,Self)>){
@@ -363,10 +371,10 @@ mod wrap{
     use super::*;
 
     ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
-    pub struct Wrap<'a,T:'a>{
+    pub struct Wrap<'a,T:Send+'a>{
         a:LevelIter<DownTMut<'a,T>>
     }
-    impl<'a,T:'a> Wrap<'a,T>{
+    impl<'a,T:Send+'a> Wrap<'a,T>{
         #[inline(always)]
         pub fn new(a:&'a mut LevelIter<DownTMut<T>>)->Wrap<'a,T>{
             let inner=&a.a;
@@ -377,7 +385,7 @@ mod wrap{
         }
     }
     
-    impl<'a,T:'a> CTreeIterator for Wrap<'a,T>{
+    impl<'a,T:Send+'a> CTreeIterator for Wrap<'a,T>{
         type Item=(LevelDesc,&'a mut T);
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             let Wrap{a}=self;
@@ -399,10 +407,10 @@ mod wrap{
 
 
     ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
-    pub struct Wrap2<'a,T:'a>{
+    pub struct Wrap2<'a,T:Send+'a>{
         a:DownT<'a,T>
     }
-    impl<'a,T:'a> Wrap2<'a,T>{
+    impl<'a,T:Send+'a> Wrap2<'a,T>{
         #[inline(always)]
         pub fn new(a:&'a DownT<'a,T>)->Wrap2<'a,T>{
             //let inner=&a.a;
@@ -418,7 +426,7 @@ mod wrap{
         }
     }
     
-    impl<'a,T:'a> CTreeIterator for Wrap2<'a,T>{
+    impl<'a,T:Send+'a> CTreeIterator for Wrap2<'a,T>{
         type Item=&'a T;
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             let Wrap2{a}=self;
@@ -441,14 +449,14 @@ mod wrap{
 
 mod cons{
     use super::*;
-    struct DownTConsume<'a,T:'a>{
+    struct DownTConsume<'a,T:Send+'a>{
         remaining:*mut GenTree<T>,
         nodeid:NodeIndex,
         first_leaf:NodeIndex,
         phantom:PhantomData<&'a T>
     }
 
-    pub fn downt_into_dfs_preorder<T,F:FnMut(T)>(mut tree:GenTree<T>,func:F){
+    pub fn downt_into_dfs_preorder<T:Send,F:FnMut(T)>(mut tree:GenTree<T>,func:F){
         {
             let t=DownTConsume{remaining:&mut tree,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(tree.nodes.len()),phantom:PhantomData};
             t.dfs_preorder(func);
@@ -458,7 +466,7 @@ mod cons{
         }
     }
 
-    impl<'a,T:'a> CTreeIterator for DownTConsume<'a,T>{
+    impl<'a,T:Send+'a> CTreeIterator for DownTConsume<'a,T>{
         type Item=T;
 
         fn next(self)->(Self::Item,Option<(Self,Self)>){
