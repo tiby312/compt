@@ -68,7 +68,7 @@ use std::collections::vec_deque::VecDeque;
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
 ///Elements stored in BFS order.
-///Has 2^k-1 elements where k is the height.
+///Has 2<sup>k-1</sup> elements where k is the height.
 pub struct GenTree<T:Send> {
     nodes: Vec<T>,
     height: usize,
@@ -82,8 +82,6 @@ pub fn compute_num_nodes(height:usize)->usize{
 
 impl<T:Send> GenTree<T> {
     
-
-
     #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
@@ -181,7 +179,7 @@ impl<T:Send> GenTree<T> {
     #[inline(always)]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self)->Vec<T>{
-        let GenTree{nodes,height}=self;
+        let GenTree{nodes,height:_}=self;
         nodes
     }
 }
@@ -206,7 +204,9 @@ impl NodeIndex{
 }
 
 
-
+///Dfs iterator. Each call to next() will return the next element
+///in dfs order.
+///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{
     a:Vec<C>
 }
@@ -233,7 +233,9 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     }
 }
 
-
+///Bfs Iterator. Each call to next() returns the next
+///element in bfs order.
+///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C:CTreeIterator>{
     a:VecDeque<C>
 }
@@ -274,17 +276,21 @@ pub trait CTreeIterator:Sized{
     fn next(self)->(Self::Item,Option<(Self,Self)>);
 
     ///Combine two tree visitors.
-    //TODO return impl trait instead of concrete type when that feature becomes stable.
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
         Zip::new(self,f)
     }
 
+    ///Provides an iterator that returns each element in bfs order.
+    ///A callback version is not provided because a queue would still need to be used,
+    ///So it wouldnt be able to take advantage of the stack anyway.
     fn bfs_iter(self)->BfsIter<Self>{
         let mut a=VecDeque::new();
         a.push_back(self);
         BfsIter{a}
     }
 
+    ///Provides a dfs preorder iterator. Unlike the callback version,
+    ///This one relies on dynamic allocation for its queue.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
         let mut v=Vec::new();
         v.push(self);
@@ -292,9 +298,10 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Calls the closure in dfs preorder (left,right,root).
+    ///Takes advantage of the callstack to do dfs.
     fn dfs_preorder<F:FnMut(Self::Item)>(self,mut func:F){
         fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
-            //let d=*a.get_level();
+            
             let (nn,rest)=a.next();
             func(nn);
             match rest{
@@ -311,9 +318,10 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Calls the closure in dfs postorder (right,left,root).
+    ///Takes advantage of the callstack to do dfs.
     fn dfs_postorder<F:FnMut(Self::Item)>(self,mut func:F){
         fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
-            //let d=*a.get_level();
+            
             let (nn,rest)=a.next();
             match rest{
                 Some((left,right))=>{
@@ -330,19 +338,19 @@ pub trait CTreeIterator:Sized{
     }
 }
 
+
+
 use std::marker::PhantomData;
-
-
-unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:Send+'a>{
     remaining:*mut GenTree<T>,
     nodeid:NodeIndex,
     first_leaf:NodeIndex,
-    phantom:PhantomData<&'a T>
+    phantom:PhantomData<&'a mut T>
 }
 
+unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
 impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
@@ -367,9 +375,6 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
         }
     }
 }
-
-
-//unsafe impl<'a,T:Send+'a> std::marker::Send for DownT<'a,T>{}
 
 
 ///Tree visitor that returns a reference to each element in the tree.
@@ -440,11 +445,7 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
     }
 }
 
-
-//pub use wrap::Wrap;
-//pub use wrap::Wrap2;
 pub use wrap::WrapGen;
-//pub use wrap::Bo;
 
 mod wrap{
     use super::*;
@@ -457,10 +458,6 @@ mod wrap{
     impl<'a,T:CTreeIterator+'a> WrapGen<'a,T>{
         #[inline(always)]
         pub fn new(a:&'a mut T)->WrapGen<'a,T>{
-            //let inner=&a.a;
-            //let k=DownTMut{remaining:inner.remaining,nodeid:inner.nodeid,first_leaf:inner.first_leaf,phantom:inner.phantom};
- 
-            //let j=LevelIter{a:k,leveld:a.leveld};
             let ff=unsafe{
                 let mut ff=std::mem::uninitialized();
                 std::ptr::copy(a, &mut ff, 1);
@@ -490,7 +487,7 @@ mod wrap{
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             let WrapGen{a,_p}=self;
   
-            let (mut item,mm)=a.next();
+            let (item,mm)=a.next();
             let item=Bo{a:item,_p:PhantomData};
             match mm{
                 Some((left,right))=>{
@@ -504,83 +501,6 @@ mod wrap{
             }
         }
     }
-    /*
-    ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
-    pub struct Wrap<'a,T:Send+'a>{
-        a:LevelIter<DownTMut<'a,T>>
-    }
-    impl<'a,T:Send+'a> Wrap<'a,T>{
-        #[inline(always)]
-        pub fn new(a:&'a mut LevelIter<DownTMut<T>>)->Wrap<'a,T>{
-            let inner=&a.a;
-            let k=DownTMut{remaining:inner.remaining,nodeid:inner.nodeid,first_leaf:inner.first_leaf,phantom:inner.phantom};
- 
-            let j=LevelIter{a:k,leveld:a.leveld};
-            Wrap{a:j}
-        }
-    }
-    
-    impl<'a,T:Send+'a> CTreeIterator for Wrap<'a,T>{
-        type Item=(LevelDesc,&'a mut T);
-        fn next(self)->(Self::Item,Option<(Self,Self)>){
-            let Wrap{a}=self;
-  
-            let (item,mm)=a.next();
-
-            match mm{
-                Some((left,right))=>{
-                    let left=Wrap{a:left};
-                    let right=Wrap{a:right};
-                    return (item,Some((left,right)));
-                },
-                None=>{
-                    return (item,None);
-                }
-            }
-        }
-    }
-
-
-    ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
-    pub struct Wrap2<'a,T:Send+'a>{
-        a:DownT<'a,T>
-    }
-    impl<'a,T:Send+'a> Wrap2<'a,T>{
-        #[inline(always)]
-        pub fn new(a:&'a DownT<'a,T>)->Wrap2<'a,T>{
-            //let inner=&a.a;
-            //let k=DownTMut{remaining:inner.remaining,nodeid:inner.nodeid,first_leaf:inner.first_leaf,phantom:inner.phantom};
- 
-            //let j=LevelIter{a:k,leveld:a.leveld};
-            let ff=unsafe{
-                let mut ff=std::mem::uninitialized();
-                std::ptr::copy(a, &mut ff, 1);
-                ff
-            };
-            Wrap2{a:ff}
-        }
-    }
-    
-    impl<'a,T:Send+'a> CTreeIterator for Wrap2<'a,T>{
-        type Item=&'a T;
-        fn next(self)->(Self::Item,Option<(Self,Self)>){
-            let Wrap2{a}=self;
-  
-            let (item,mm)=a.next();
-
-            match mm{
-                Some((left,right))=>{
-                    let left=Wrap2{a:left};
-                    let right=Wrap2{a:right};
-                    return (item,Some((left,right)));
-                },
-                None=>{
-                    return (item,None);
-                }
-            }
-        }
-    }
-    */
 }
 
 
