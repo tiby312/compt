@@ -9,3 +9,4 @@ keywords = ["tree", "binary"]
 readme = "README.md"
 
 [dependencies]
+rayon = "1.0.1"

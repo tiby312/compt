@@ -62,8 +62,155 @@
 //!```
 //!
 
+extern crate rayon;
 use std::collections::vec_deque::VecDeque;
 
+
+pub mod dfs{
+    use super::*;
+
+    ///Visitor functions use this type to determine what node to visit.
+    ///The nodes in the tree are kept in the tree in BFS order.
+    #[derive(Copy,Clone,Debug)]
+    struct NodeIndexDfs(usize);
+
+    impl NodeIndexDfs{
+        #[inline(always)]
+        fn get_children(self,diff:usize) -> (NodeIndexDfs, NodeIndexDfs) {
+            
+
+            //000000000000000
+            //       0
+            //   0       0
+            // 0   0   0   0
+            //0 0 0 0 0 0 0 0
+
+            let NodeIndexDfs(a) = self;
+            (NodeIndexDfs(a-diff), NodeIndexDfs(a+diff))
+        }
+    }
+
+
+    use std::marker::PhantomData;
+
+    pub struct GenTreeDfsOrder<T:Send>{
+        nodes: Vec<T>,
+        height:usize
+    }
+    impl<T:Send> GenTreeDfsOrder<T>{
+        #[inline(always)]
+        pub fn get_height(&self) -> usize {
+            self.height
+        }
+
+        ///Create a complete binary tree using the specified node generating function.
+        
+        #[inline(always)]
+        pub fn from_dfs_inorder<F:FnMut()->T>(mut func:F,height:usize)->GenTreeDfsOrder<T>{
+            let num=compute_num_nodes(height);
+            let mut nodes=Vec::with_capacity(num);
+            for _ in 0..num{
+                nodes.push(func());
+            }
+            GenTreeDfsOrder{nodes,height}
+        }
+
+        pub fn dfs_inorder_iter(&self)->std::slice::Iter<T>{
+            self.nodes.iter()
+        }
+
+        pub fn dfs_inorder_iter_mut(&mut self)->std::slice::IterMut<T>{
+            self.nodes.iter_mut()
+        }
+        #[inline(always)]
+        pub fn get_nodes(&self)->&[T]{
+            &self.nodes
+        }
+        #[inline(always)]
+        pub fn create_down(&self)->DownT<T>{
+            DownT{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:self.nodes.len()/4}
+        }
+
+        #[inline(always)]
+        pub fn create_down_mut(&mut self)->DownTMut<T>{
+            DownTMut{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:self.nodes.len()/4,phantom:PhantomData}
+        }
+
+        #[inline(always)]
+        ///Create a LevelDesc that can be passed to a LevelIter.
+        pub fn get_level_desc(&self)->LevelDesc{
+            LevelDesc{depth:0}
+        }
+        
+    }
+
+    ///Tree visitor that returns a reference to each element in the tree.
+    pub struct DownT<'a,T:Send+'a>{
+        remaining:&'a GenTreeDfsOrder<T>,
+        nodeid:NodeIndexDfs,
+        span:usize,
+    }
+
+    impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
+        type Item=&'a T;
+        #[inline(always)]
+        fn next(self)->(Self::Item,Option<(Self,Self)>){
+     
+            let a=&self.remaining.nodes[self.nodeid.0];
+            
+            if self.span==0{
+                (a,None)
+            }else{
+                let (l,r)=self.nodeid.get_children(self.span);
+                
+                let j=(     
+                    DownT{remaining:self.remaining,nodeid:l,span:self.span/2},
+                    DownT{remaining:self.remaining,nodeid:r,span:self.span/2}
+                );
+                (a,Some(j))
+            }
+        }
+     
+
+    }
+
+
+
+    ///Tree visitor that returns a mutable reference to each element in the tree.
+    pub struct DownTMut<'a,T:Send+'a>{
+        remaining:*mut GenTreeDfsOrder<T>,
+        nodeid:NodeIndexDfs,
+        span:usize,
+        phantom:PhantomData<&'a mut T>
+    }
+
+    unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
+
+    impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
+        type Item=&'a mut T;
+        #[inline(always)]
+        fn next(self)->(Self::Item,Option<(Self,Self)>){
+     
+            //Unsafely get a mutable reference to this nodeid.
+            //Since at the start there was only one DownTMut that pointed to the root,
+            //there is no danger of two DownTMut's producing a reference to the same node.
+            let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
+            if self.span==0{
+                (a,None)
+            }else{
+                let node_len=unsafe{(*self.remaining).nodes.len()};
+                let (l,r)=self.nodeid.get_children(self.span);
+                
+                let j=(     
+                    DownTMut{remaining:self.remaining,nodeid:l,span:self.span/2,phantom:PhantomData},
+                    DownTMut{remaining:self.remaining,nodeid:r,span:self.span/2,phantom:PhantomData}
+                );
+                (a,Some(j))
+            }
+        }
+    }
+
+}
 
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
@@ -267,6 +414,146 @@ impl<C:CTreeIterator> Iterator for BfsIter<C>{
 }
 
 
+
+pub struct Map<C,F>{
+    func:F,
+    inner:C
+}
+impl<B,C:CTreeIterator,F:Fn(C::Item)->B> CTreeIterator for Map<C,F>{
+    type Item=B;
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        let (a,rest)=self.inner.next();
+        
+        let res=(self.func)(a);
+        match rest{
+            Some((left,right))=>{
+                
+                //Fn Closures don't automatically implement clone.
+                let (ll,rr)=unsafe{
+                    let mut ll:Map<C,F>=std::mem::uninitialized();
+                    let mut rr:Map<C,F>=std::mem::uninitialized();
+                    ll.inner=left;
+                    rr.inner=right;
+                    std::ptr::copy(&self.func,&mut ll.func,1);
+                    std::ptr::copy(&self.func,&mut rr.func,1);
+                    (ll,rr)
+                };
+                (res,Some((ll,rr)))
+            },
+            None=>{
+                (res,None)
+            }
+        }
+    }
+}
+
+
+
+pub mod par{
+    use super::*;
+    pub trait AxisTrait:Copy+Send{
+        type Next:AxisTrait;
+        fn next(&self)->Self::Next;
+    }
+
+
+    pub trait Makerr:Clone+Send{
+        type B:Send;
+        type Item;
+        fn node<A:AxisTrait>(&self,Self::Item,Self::B,axis:A)->(Self::B,Self::B);
+        fn leaf<A:AxisTrait>(&self,Self::Item,Self::B,axis:A);
+        fn switch_sequential(&self,a:&LevelDesc)->bool;
+    }
+
+
+    pub trait Makerr2:Clone+Send{
+        type B:Send;
+        type Item;
+        fn node(&self,Self::Item,Self::B)->(Self::B,Self::B);
+        fn leaf(&self,Self::Item,Self::B);
+        fn switch_sequential(&self,a:&LevelDesc)->bool;
+    }
+
+
+
+    pub fn in_parallel_alternate_axis<
+        A:AxisTrait,
+        X,
+        T:CTreeIterator<Item=(LevelDesc,X)>+Send,
+        M:Makerr<Item=(LevelDesc,X)>>
+        (
+            it:T,func:M,a:M::B,axis:A){
+
+        recc(it,func,a,axis);
+
+        fn recc<A:AxisTrait,X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr<Item=(LevelDesc,X)>>
+            (s:T,m:M,b:M::B,axis:A){
+            let (inner,rest)=s.next();
+            match rest{
+                Some((left,right))=>{
+
+                    let m1=m.clone();
+                    let m2=m.clone();
+
+                    let seq=m.switch_sequential(&inner.0);
+                    
+                    let (b1,b2)=m.node(inner,b,axis);
+
+                    let a1=axis.next();
+                    if !seq{
+                        rayon::join(
+                            move ||recc(left,m1,b1,a1),
+                            move ||recc(right,m2,b2,a1)
+                        );
+                    }else{
+                        recc(left,m1,b1,a1);
+                        recc(right,m2,b2,a1);
+                    }
+                },
+                None=>{
+                    m.leaf(inner,b,axis.next());
+                }
+            }
+        }
+    }
+
+
+    pub fn in_parallel<X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr2<Item=(LevelDesc,X)>>(
+            it:T,func:M,a:M::B){
+
+        recc(it,func,a);
+
+        fn recc<X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr2<Item=(LevelDesc,X)>>(s:T,m:M,b:M::B){
+            let (inner,rest)=s.next();
+            match rest{
+                Some((left,right))=>{
+
+                    let m1=m.clone();
+                    let m2=m.clone();
+
+                    let seq=m.switch_sequential(&inner.0);
+                    
+                    let (b1,b2)=m.node(inner,b);
+
+                    if !seq{
+                        rayon::join(
+                            move ||recc(left,m1,b1),
+                            move ||recc(right,m2,b2)
+                        );
+                    }else{
+                        recc(left,m1,b1);
+                        recc(right,m2,b2);
+                    }
+                },
+                None=>{
+                    m.leaf(inner,b);
+                }
+            }
+        }
+    }
+}
+
+
 ///All binary tree visitors implement this.
 pub trait CTreeIterator:Sized{
     type Item;
@@ -279,6 +566,11 @@ pub trait CTreeIterator:Sized{
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
         Zip::new(self,f)
     }
+
+    fn map<B,F:Fn(Self::Item)->B>(self,func:F)->Map<Self,F>{
+        Map{func,inner:self}
+    }
+
 
     ///Provides an iterator that returns each element in bfs order.
     ///A callback version is not provided because a queue would still need to be used,
@@ -316,6 +608,29 @@ pub trait CTreeIterator:Sized{
         }
         rec(self,&mut func);
     }
+
+
+    ///Calls the closure in dfs preorder (left,right,root).
+    ///Takes advantage of the callstack to do dfs.
+    fn dfs_inorder<F:FnMut(Self::Item)>(self,mut func:F){
+        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+            
+            let (nn,rest)=a.next();
+            
+            match rest{
+                Some((left,right))=>{
+                    rec(left,func);
+                    func(nn);
+                    rec(right,func);
+                },
+                None=>{
+                    func(nn);
+                }
+            }
+        }
+        rec(self,&mut func);
+    }
+
 
     ///Calls the closure in dfs postorder (right,left,root).
     ///Takes advantage of the callstack to do dfs.
