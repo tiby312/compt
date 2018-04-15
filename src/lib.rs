@@ -63,8 +63,9 @@
 //!
 
 extern crate rayon;
+extern crate smallvec;
 use std::collections::vec_deque::VecDeque;
-
+use smallvec::SmallVec;
 
 pub mod dfs{
     use super::*;
@@ -137,9 +138,9 @@ pub mod dfs{
         }
 
         #[inline(always)]
-        ///Create a LevelDesc that can be passed to a LevelIter.
-        pub fn get_level_desc(&self)->LevelDesc{
-            LevelDesc{depth:0}
+        ///Create a Depth that can be passed to a LevelIter.
+        pub fn get_level_desc(&self)->Depth{
+            Depth(0)
         }
         
     }
@@ -198,7 +199,7 @@ pub mod dfs{
             if self.span==0{
                 (a,None)
             }else{
-                let node_len=unsafe{(*self.remaining).nodes.len()};
+                //let node_len=unsafe{(*self.remaining).nodes.len()};
                 let (l,r)=self.nodeid.get_children(self.span);
                 
                 let j=(     
@@ -229,6 +230,12 @@ pub fn compute_num_nodes(height:usize)->usize{
 
 impl<T:Send> GenTree<T> {
     
+    /*
+    pub fn from_parr<M:par::Makerr2<Item=T>>()->GenTree<T>{
+        //TODO finish
+        unimplemented!();
+    }
+    */
     #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
@@ -292,9 +299,9 @@ impl<T:Send> GenTree<T> {
     }
     
     #[inline(always)]
-    ///Create a LevelDesc that can be passed to a LevelIter.
-    pub fn get_level_desc(&self)->LevelDesc{
-        LevelDesc{depth:0}
+    ///Create a Depth that can be passed to a LevelIter.
+    pub fn get_level_desc(&self)->Depth{
+        Depth(0)
     }
     
     #[inline(always)]
@@ -351,11 +358,12 @@ impl NodeIndex{
 }
 
 
+
 ///Dfs iterator. Each call to next() will return the next element
 ///in dfs order.
 ///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{
-    a:Vec<C>
+    a:SmallVec<[C;16]>
 }
 
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
@@ -449,104 +457,68 @@ impl<B,C:CTreeIterator,F:Fn(C::Item)->B> CTreeIterator for Map<C,F>{
 
 
 
+
+//TODO use this!!!!
 pub mod par{
+    use super::*;
+
     use super::*;
     pub trait AxisTrait:Copy+Send{
         type Next:AxisTrait;
         fn next(&self)->Self::Next;
+        fn is_xaxis(&self)->bool;
     }
 
 
-    pub trait Makerr:Clone+Send{
-        type B:Send;
-        type Item;
-        fn node<A:AxisTrait>(&self,Self::Item,Self::B,axis:A)->(Self::B,Self::B);
-        fn leaf<A:AxisTrait>(&self,Self::Item,Self::B,axis:A);
-        fn switch_sequential(&self,a:&LevelDesc)->bool;
-    }
+    #[derive(Copy,Clone,Debug)]
+    pub struct XAXIS;
 
-
-    pub trait Makerr2:Clone+Send{
-        type B:Send;
-        type Item;
-        fn node(&self,Self::Item,Self::B)->(Self::B,Self::B);
-        fn leaf(&self,Self::Item,Self::B);
-        fn switch_sequential(&self,a:&LevelDesc)->bool;
-    }
-
-
-
-    pub fn in_parallel_alternate_axis<
-        A:AxisTrait,
-        X,
-        T:CTreeIterator<Item=(LevelDesc,X)>+Send,
-        M:Makerr<Item=(LevelDesc,X)>>
-        (
-            it:T,func:M,a:M::B,axis:A){
-
-        recc(it,func,a,axis);
-
-        fn recc<A:AxisTrait,X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr<Item=(LevelDesc,X)>>
-            (s:T,m:M,b:M::B,axis:A){
-            let (inner,rest)=s.next();
-            match rest{
-                Some((left,right))=>{
-
-                    let m1=m.clone();
-                    let m2=m.clone();
-
-                    let seq=m.switch_sequential(&inner.0);
-                    
-                    let (b1,b2)=m.node(inner,b,axis);
-
-                    let a1=axis.next();
-                    if !seq{
-                        rayon::join(
-                            move ||recc(left,m1,b1,a1),
-                            move ||recc(right,m2,b2,a1)
-                        );
-                    }else{
-                        recc(left,m1,b1,a1);
-                        recc(right,m2,b2,a1);
-                    }
-                },
-                None=>{
-                    m.leaf(inner,b,axis.next());
-                }
-            }
+    #[derive(Copy,Clone,Debug)]
+    pub struct YAXIS;
+    impl AxisTrait for XAXIS{
+        type Next=YAXIS;
+        fn next(&self)->YAXIS{
+            YAXIS
+        }
+        fn is_xaxis(&self)->bool{
+            true
         }
     }
+    impl AxisTrait for YAXIS{
+        type Next=XAXIS;
+        fn next(&self)->XAXIS{
+            XAXIS
+        }
+        fn is_xaxis(&self)->bool{
+            false
+        }
+    }
+    
+    //TODO put htis in the iterator trait
+    pub fn in_preorder_parallel<X:Send,T:CTreeIterator<Item=X>+Send,F:Fn(X)+Sync>(
+            it:T,func:F,depth_to_switch:Depth){
 
+        let level=LevelIter::new(it,Depth(0));
+        recc(level,depth_to_switch,&func);
 
-    pub fn in_parallel<X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr2<Item=(LevelDesc,X)>>(
-            it:T,func:M,a:M::B){
-
-        recc(it,func,a);
-
-        fn recc<X,T:CTreeIterator<Item=(LevelDesc,X)>+Send,M:Makerr2<Item=(LevelDesc,X)>>(s:T,m:M,b:M::B){
-            let (inner,rest)=s.next();
+        fn recc<X:Send,T:CTreeIterator<Item=(Depth,X)>+Send,F:Fn(X)+Sync>(s:T,depth_to_switch:Depth,func:&F){
+            let ((depth,nn),rest)=s.next();
+            
+            func(nn);
             match rest{
                 Some((left,right))=>{
 
-                    let m1=m.clone();
-                    let m2=m.clone();
-
-                    let seq=m.switch_sequential(&inner.0);
-                    
-                    let (b1,b2)=m.node(inner,b);
-
-                    if !seq{
+                    if depth_to_switch.0>=depth.0{
                         rayon::join(
-                            move ||recc(left,m1,b1),
-                            move ||recc(right,m2,b2)
+                            move ||recc(left,depth,func),
+                            move ||recc(right,depth,func)
                         );
                     }else{
-                        recc(left,m1,b1);
-                        recc(right,m2,b2);
+                        recc(left,depth,func);
+                        recc(right,depth,func);
                     }
                 },
                 None=>{
-                    m.leaf(inner,b);
                 }
             }
         }
@@ -561,6 +533,18 @@ pub trait CTreeIterator:Sized{
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
     fn next(self)->(Self::Item,Option<(Self,Self)>);
+
+    fn with_axis(self,xaxis:bool)->AxisIter<Self>{
+        AxisIter::new(xaxis,self)
+    }
+
+    fn with_leaf(self)->IsLeaf<Self>{
+        IsLeaf(self)
+    }
+
+    fn with_depth(self)->LevelIter<Self>{
+        LevelIter::new(self,Depth(0))
+    }
 
     ///Combine two tree visitors.
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
@@ -584,7 +568,7 @@ pub trait CTreeIterator:Sized{
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its queue.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
-        let mut v=Vec::new();
+        let mut v=SmallVec::new();
         v.push(self);
         DfsPreorderIter{a:v}
     }
@@ -650,6 +634,93 @@ pub trait CTreeIterator:Sized{
             func(nn);
         }
         rec(self,&mut func);
+    }
+}
+
+
+pub struct IsLeaf<C:CTreeIterator>(C);
+
+
+impl<C:CTreeIterator> CTreeIterator for IsLeaf<C>{
+    type Item=(bool,C::Item);
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        let (n,rest)=self.0.next();
+        
+        match rest{
+            Some((left,right))=>{
+                let left=IsLeaf(left);
+                let right=IsLeaf(right);
+                ((false,n),Some((left,right)))
+            },
+            None=>{
+                ((true,n),None)
+            }
+        }
+    }
+}
+
+pub struct AxisIter<C:CTreeIterator>{
+    is_xaxis:bool,
+    c:C
+}
+impl<C:CTreeIterator> AxisIter<C>{
+    fn new(is_xaxis:bool,c:C)->AxisIter<C>{
+        AxisIter{is_xaxis,c}
+    }
+}
+impl<C:CTreeIterator> CTreeIterator for AxisIter<C>{
+    type Item=(bool,C::Item);
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        let (n,rest)=self.c.next();
+        let nn=(self.is_xaxis,n);
+
+        match rest{
+            Some((left,right))=>{
+                let is_xaxis=!(self.is_xaxis);
+                let left=AxisIter{is_xaxis,c:left};
+                let right=AxisIter{is_xaxis,c:right};
+                (nn,Some((left,right)))
+            },
+            None=>{
+                (nn,None)
+            }
+        }
+    }
+}
+
+
+
+
+pub struct Extra<F:Fn(X)->(X,X)+Clone,X:Clone,C:CTreeIterator>{
+    pub c:C,
+    pub extra:X,
+    pub func:F
+}
+
+
+impl<F:Fn(X)->(X,X)+Clone,X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
+    type Item=(X,C::Item);
+    fn next(self)->(Self::Item,Option<(Self,Self)>){
+        
+        
+        let (n,rest)=self.c.next();
+        
+        let res=(self.extra.clone(),n);
+
+        match rest{
+            Some((left,right))=>{
+
+                let (a,b)=(self.func)(self.extra);
+                
+                let left=Extra{c:left,extra:a,func:self.func.clone()};
+                
+                let right=Extra{c:right,extra:b,func:self.func.clone()};
+                (res,Some((left,right)))
+            },
+            None=>{
+                (res,None)
+            }
+        }
     }
 }
 
@@ -869,36 +940,29 @@ mod cons{
 
 #[derive(Copy,Clone)]
 ///A level descriptor. This is passed to LevelIter.
-pub struct LevelDesc{
-    depth:usize
-}
+pub struct Depth(pub usize);
 
-impl LevelDesc{
+impl Depth{
     #[inline(always)]
-    fn next_down(&self)->LevelDesc{
-        LevelDesc{depth:self.depth+1}
+    fn next_down(&self)->Depth{
+        Depth(self.0+1)
     }
-
-    #[inline(always)]
-    pub fn get_depth(&self)->usize{
-        self.depth
-    } 
 }
 
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T:CTreeIterator>{
     a:T,
-    leveld:LevelDesc
+    leveld:Depth
 }
 impl <T:CTreeIterator> LevelIter<T>{
     #[inline(always)]
-    pub fn new(a:T,leveld:LevelDesc)->LevelIter<T>{
+    fn new(a:T,leveld:Depth)->LevelIter<T>{
         return LevelIter{a,leveld};
     }
 }
 
 impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
-    type Item=(LevelDesc,T::Item);
+    type Item=(Depth,T::Item);
     #[inline(always)]
     fn next(self)->(Self::Item,Option<(Self,Self)>){
         let LevelIter{a,leveld}=self;
