@@ -78,7 +78,7 @@ pub mod dfs{
     impl NodeIndexDfs{
         #[inline(always)]
         fn get_children(self,diff:usize) -> (NodeIndexDfs, NodeIndexDfs) {
-            
+            //println!("id={:?}",self.0);
 
             //000000000000000
             //       0
@@ -129,12 +129,14 @@ pub mod dfs{
         }
         #[inline(always)]
         pub fn create_down(&self)->DownT<T>{
-            DownT{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:self.nodes.len()/4}
+            let k=self.nodes.len()+1;
+            DownT{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:k/4}
         }
 
         #[inline(always)]
         pub fn create_down_mut(&mut self)->DownTMut<T>{
-            DownTMut{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:self.nodes.len()/4,phantom:PhantomData}
+            let k=self.nodes.len()+1;
+            DownTMut{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:k/4,phantom:PhantomData}
         }
 
         #[inline(always)]
@@ -191,7 +193,7 @@ pub mod dfs{
         type Item=&'a mut T;
         #[inline(always)]
         fn next(self)->(Self::Item,Option<(Self,Self)>){
-     
+            
             //Unsafely get a mutable reference to this nodeid.
             //Since at the start there was only one DownTMut that pointed to the root,
             //there is no danger of two DownTMut's producing a reference to the same node.
@@ -200,8 +202,9 @@ pub mod dfs{
                 (a,None)
             }else{
                 //let node_len=unsafe{(*self.remaining).nodes.len()};
+
                 let (l,r)=self.nodeid.get_children(self.span);
-                
+                //println!("id={:?} span={:?} children={:?}",self.nodeid.0,self.span,(l,r));
                 let j=(     
                     DownTMut{remaining:self.remaining,nodeid:l,span:self.span/2,phantom:PhantomData},
                     DownTMut{remaining:self.remaining,nodeid:r,span:self.span/2,phantom:PhantomData}
@@ -493,35 +496,41 @@ pub mod par{
             false
         }
     }
-    
+
     //TODO put htis in the iterator trait
-    pub fn in_preorder_parallel<X:Send,T:CTreeIterator<Item=X>+Send,F:Fn(X)+Sync>(
-            it:T,func:F,depth_to_switch:Depth){
+    pub fn in_preorder_parallel<Y:Send,X:Send,T:CTreeIterator<Item=X>+Send,F1:Fn(X,Y)->(Y,Y)+Sync,F2:Fn(Y,Y)->Y+Sync,F3:Fn(X,Y)->Y+Sync>(
+            it:T,func:F1,f2:F2,f3:F3,depth_to_switch:Depth,val:Y)->Y{
 
-        let level=LevelIter::new(it,Depth(0));
-        recc(level,depth_to_switch,&func);
 
-        fn recc<X:Send,T:CTreeIterator<Item=(Depth,X)>+Send,F:Fn(X)+Sync>(s:T,depth_to_switch:Depth,func:&F){
+        fn recc<Y:Send,X:Send,T:CTreeIterator<Item=(Depth,X)>+Send,F1:Fn(X,Y)->(Y,Y)+Sync,F2:Fn(Y,Y)->Y+Sync,F3:Fn(X,Y)->Y+Sync>(s:T,depth_to_switch:Depth,func:&F1,f2:&F2,f3:&F3,val:Y)->Y{
             let ((depth,nn),rest)=s.next();
             
-            func(nn);
             match rest{
                 Some((left,right))=>{
 
-                    if depth_to_switch.0>=depth.0{
+                    let (yl,yr)=func(nn,val);
+                    /*
+                    let (a,b)=if depth_to_switch.0>=depth.0{
                         rayon::join(
-                            move ||recc(left,depth,func),
-                            move ||recc(right,depth,func)
-                        );
+                            move ||recc(left,depth,func,f2,f3,yl),
+                            move ||recc(right,depth,func,f2,f3,yr)
+                        )
                     }else{
-                        recc(left,depth,func);
-                        recc(right,depth,func);
-                    }
+                        */
+                     let (a,b)=   (recc(left,depth,func,f2,f3,yl),
+                        recc(right,depth,func,f2,f3,yr));
+                    //};
+
+                    f2(a,b)
                 },
                 None=>{
+                    f3(nn,val)
                 }
             }
         }
+
+        let level=LevelIter::new(it,Depth(0));
+        recc(level,depth_to_switch,&func,&f2,&f3,val)
     }
 }
 
