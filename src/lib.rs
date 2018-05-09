@@ -94,11 +94,22 @@ pub mod dfs{
 
     use std::marker::PhantomData;
 
-    pub struct GenTreeDfsOrder<T:Send>{
+    pub struct GenTreeDfsOrder<T>{
         nodes: Vec<T>,
         height:usize
     }
-    impl<T:Send> GenTreeDfsOrder<T>{
+    impl<T> GenTreeDfsOrder<T>{
+
+
+        #[inline(always)]
+        pub fn from_vec(vec:Vec<T>,height:usize)->Result<GenTreeDfsOrder<T>,&'static str>{
+            if 2_usize.pow(height as u32)==vec.len()+1{
+                Ok(GenTreeDfsOrder{nodes:vec,height})
+            }else{
+                Err("Not a power of two")
+            }
+        }
+
         #[inline(always)]
         pub fn get_height(&self) -> usize {
             self.height
@@ -148,13 +159,18 @@ pub mod dfs{
     }
 
     ///Tree visitor that returns a reference to each element in the tree.
-    pub struct DownT<'a,T:Send+'a>{
+    pub struct DownT<'a,T:'a>{
         remaining:&'a GenTreeDfsOrder<T>,
         nodeid:NodeIndexDfs,
         span:usize,
     }
+    impl<'a,T:'a> DownT<'a,T>{
+        pub fn create_wrap<'b>(&'b self)->DownT<'b,T>{
+            DownT{remaining:self.remaining,nodeid:self.nodeid,span:self.span}
+        }
+    }
 
-    impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
+    impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
         type Item=&'a T;
         #[inline(always)]
         fn next(self)->(Self::Item,Option<(Self,Self)>){
@@ -177,10 +193,8 @@ pub mod dfs{
 
     }
 
-
-
     ///Tree visitor that returns a mutable reference to each element in the tree.
-    pub struct DownTMut<'a,T:Send+'a>{
+    pub struct DownTMut<'a,T:'a>{
         remaining:*mut GenTreeDfsOrder<T>,
         nodeid:NodeIndexDfs,
         span:usize,
@@ -189,7 +203,13 @@ pub mod dfs{
 
     unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
-    impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
+
+    impl<'a,T:'a> DownTMut<'a,T>{
+        pub fn create_wrap_mut<'b>(&'b mut self)->DownTMut<'b,T>{
+            DownTMut{remaining:self.remaining,nodeid:self.nodeid,span:self.span,phantom:self.phantom}
+        }
+    }
+    impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
         type Item=&'a mut T;
         #[inline(always)]
         fn next(self)->(Self::Item,Option<(Self,Self)>){
@@ -543,7 +563,7 @@ pub trait CTreeIterator:Sized{
     ///along with it's children visitors.
     fn next(self)->(Self::Item,Option<(Self,Self)>);
 
-    fn with_axis(self,xaxis:bool)->AxisIter<Self>{
+    fn with_axis(self,xaxis:TAxis)->AxisIter<Self>{
         AxisIter::new(xaxis,self)
     }
 
@@ -551,8 +571,12 @@ pub trait CTreeIterator:Sized{
         IsLeaf(self)
     }
 
-    fn with_depth(self)->LevelIter<Self>{
-        LevelIter::new(self,Depth(0))
+    fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
+        LevelIter::new(self,start_depth)
+    }
+
+    fn with_extra<F:Fn(&Self::Item,X)->(X,X),X:Clone>(self,func:F,extra:X)->Extra<F,X,Self>{
+        Extra{c:self,extra,func}
     }
 
     ///Combine two tree visitors.
@@ -644,14 +668,44 @@ pub trait CTreeIterator:Sized{
         }
         rec(self,&mut func);
     }
+    /*
+    fn dfs_inorder_axis<A:par::AxisTrait,AC:AxisCallback<Item=Self::Item>>(self,axis:A,mut callback:AC){
+        fn recc<X,C:CTreeIterator<Item=X>,AC:AxisCallback<Item=X>,A:par::AxisTrait>(a:C,mut b:&mut AC,axis:A){
+
+            let (n,rest)=a.next();
+            
+            b.handle::<A>(n);
+
+            match rest{
+                Some((left,right))=>{
+                    recc(left,b,axis.next());
+                    recc(right,b,axis.next());
+                },
+                None=>{
+
+                }
+            }
+        }
+
+        recc(self,&mut callback,axis);
+    }*/
 }
 
+
+
+
+
+#[derive(Copy,Clone,Debug)]
+pub enum TLeaf{
+    IsNotLeaf = 0,
+    IsLeaf = 1
+}
 
 pub struct IsLeaf<C:CTreeIterator>(C);
 
 
 impl<C:CTreeIterator> CTreeIterator for IsLeaf<C>{
-    type Item=(bool,C::Item);
+    type Item=(TLeaf,C::Item);
     fn next(self)->(Self::Item,Option<(Self,Self)>){
         let (n,rest)=self.0.next();
         
@@ -659,33 +713,62 @@ impl<C:CTreeIterator> CTreeIterator for IsLeaf<C>{
             Some((left,right))=>{
                 let left=IsLeaf(left);
                 let right=IsLeaf(right);
-                ((false,n),Some((left,right)))
+                ((TLeaf::IsNotLeaf,n),Some((left,right)))
             },
             None=>{
-                ((true,n),None)
+                ((TLeaf::IsLeaf,n),None)
             }
         }
     }
 }
 
+
+#[derive(Copy,Clone,Debug)]
+pub enum TAxis{
+    XAXIS=0,
+    YAXIS=1
+}
+
+impl TAxis{
+    pub fn is_xaxis(&self)->bool{
+        match self{
+            &TAxis::XAXIS=>{
+                true
+            },
+            &TAxis::YAXIS=>{
+                false
+            }
+
+        }
+    }
+}
+
 pub struct AxisIter<C:CTreeIterator>{
-    is_xaxis:bool,
+    is_xaxis:TAxis,
     c:C
 }
 impl<C:CTreeIterator> AxisIter<C>{
-    fn new(is_xaxis:bool,c:C)->AxisIter<C>{
+    fn new(is_xaxis:TAxis,c:C)->AxisIter<C>{
         AxisIter{is_xaxis,c}
     }
 }
 impl<C:CTreeIterator> CTreeIterator for AxisIter<C>{
-    type Item=(bool,C::Item);
+    type Item=(TAxis,C::Item);
     fn next(self)->(Self::Item,Option<(Self,Self)>){
         let (n,rest)=self.c.next();
         let nn=(self.is_xaxis,n);
 
         match rest{
             Some((left,right))=>{
-                let is_xaxis=!(self.is_xaxis);
+                let is_xaxis=match self.is_xaxis{
+                    TAxis::XAXIS=>{
+                        TAxis::YAXIS
+                    },
+                    TAxis::YAXIS=>{
+                        TAxis::XAXIS
+                    }
+                };
+                //let is_xaxis=!(self.is_xaxis);
                 let left=AxisIter{is_xaxis,c:left};
                 let right=AxisIter{is_xaxis,c:right};
                 (nn,Some((left,right)))
@@ -699,35 +782,47 @@ impl<C:CTreeIterator> CTreeIterator for AxisIter<C>{
 
 
 
+pub use extra::Extra;
+mod extra{
+    use super::*;
 
-pub struct Extra<F:Fn(X)->(X,X)+Clone,X:Clone,C:CTreeIterator>{
-    pub c:C,
-    pub extra:X,
-    pub func:F
-}
+    pub struct Extra<F:Fn(&C::Item,X)->(X,X),X:Clone,C:CTreeIterator>{
+        pub c:C,
+        pub extra:X,
+        pub func:F
+    }
 
 
-impl<F:Fn(X)->(X,X)+Clone,X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
-    type Item=(X,C::Item);
-    fn next(self)->(Self::Item,Option<(Self,Self)>){
-        
-        
-        let (n,rest)=self.c.next();
-        
-        let res=(self.extra.clone(),n);
+    fn clone_func<CI,F:Fn(&CI,X)->(X,X),X:Clone>(func:&F)->F{
+        unsafe{
+            let mut k=std::mem::uninitialized();
+            std::ptr::copy(func,&mut k,1);
+            k
+        }
+    }
 
-        match rest{
-            Some((left,right))=>{
+    impl<F:Fn(&C::Item,X)->(X,X),X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
+        type Item=(X,C::Item);
+        fn next(self)->(Self::Item,Option<(Self,Self)>){
+            
+            
+            let (mut n,rest)=self.c.next();
+            
+            let ex=self.extra.clone();
 
-                let (a,b)=(self.func)(self.extra);
-                
-                let left=Extra{c:left,extra:a,func:self.func.clone()};
-                
-                let right=Extra{c:right,extra:b,func:self.func.clone()};
-                (res,Some((left,right)))
-            },
-            None=>{
-                (res,None)
+            match rest{
+                Some((left,right))=>{
+
+                    let (a,b)=(self.func)(&mut n,self.extra);
+                    
+                    let left=Extra{c:left,extra:a,func:clone_func(&self.func)};
+                    
+                    let right=Extra{c:right,extra:b,func:clone_func(&self.func)};
+                    ((ex,n),Some((left,right)))
+                },
+                None=>{
+                    ((ex,n),None)
+                }
             }
         }
     }
@@ -840,11 +935,12 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
     }
 }
 
+/*
 pub use wrap::WrapGen;
 
 mod wrap{
     use super::*;
-
+    //TODO remove this!!! make users use the concrete wrappers instead.
     ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
     pub struct WrapGen<'a,T:CTreeIterator+'a>{
         a:T,
@@ -868,6 +964,7 @@ mod wrap{
     }
     
     impl<'a,T:'a> Bo<'a,T>{
+
         pub fn get_mut (&mut self)->&mut T{
             &mut self.a
         }
@@ -896,7 +993,7 @@ mod wrap{
             }
         }
     }
-}
+}*/
 
 
 mod cons{
@@ -953,36 +1050,57 @@ pub struct Depth(pub usize);
 
 impl Depth{
     #[inline(always)]
-    fn next_down(&self)->Depth{
+    pub fn next_down(&self)->Depth{
         Depth(self.0+1)
     }
 }
 
+
+#[test]
+fn testy(){
+    let mut k=dfs::GenTreeDfsOrder::from_dfs_inorder(||0,5);
+
+    let j=k.create_down_mut();
+
+    let k:LevelIter<dfs::DownTMut<usize>>=j.with_depth();//LevelIter<NdIter<T>>;
+
+
+    {
+        let (depth,bla)=k.into_inner();
+        
+        let wrap=bla.create_wrap().with_depth(depth);
+    }
+
+}
+
+
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T:CTreeIterator>{
-    a:T,
+    pub inner:T,
     leveld:Depth
 }
 impl <T:CTreeIterator> LevelIter<T>{
     #[inline(always)]
     fn new(a:T,leveld:Depth)->LevelIter<T>{
-        return LevelIter{a,leveld};
+        return LevelIter{inner:a,leveld};
     }
+
 }
+
 
 impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
     type Item=(Depth,T::Item);
     #[inline(always)]
     fn next(self)->(Self::Item,Option<(Self,Self)>){
-        let LevelIter{a,leveld}=self;
-        let (nn,rest)=a.next();
+        let LevelIter{inner,leveld}=self;
+        let (nn,rest)=inner.next();
 
         let r=(leveld,nn);
         match rest{
             Some((left,right))=>{
                 let ln=leveld.next_down();
-                let ll=LevelIter{a:left,leveld:ln};
-                let rr=LevelIter{a:right,leveld:ln};
+                let ll=LevelIter{inner:left,leveld:ln};
+                let rr=LevelIter{inner:right,leveld:ln};
                 (r,Some((ll,rr)))
             },
             None=>{

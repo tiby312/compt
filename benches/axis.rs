@@ -9,8 +9,12 @@ use test::*;
 fn dostuff(a:bool){
 	let mut bla=0;
 	for i in 0..10{
-		for j in 0..10{
-			bla+=j-i;
+		if !a{
+			for j in 0..10{
+				if a{
+					bla+=j-i;
+				}
+			}
 		}
 	}
 	black_box(bla);
@@ -21,15 +25,15 @@ fn bench_dynamic_iter(a:&mut Bencher){
 	let mut tree=dfs::GenTreeDfsOrder::from_dfs_inorder(||{0},12);
 
 	a.iter(||{
-		let i=tree.create_down_mut().with_axis(true);
+		let i=tree.create_down_mut().with_axis(TAxis::XAXIS);
 		for (is_xaxis,item) in i.dfs_preorder_iter(){
-			if is_xaxis{
+			if is_xaxis.is_xaxis(){
 				*item=5;
 			}else{
 				*item=3;
 			}
 
-			dostuff(is_xaxis);
+			dostuff(is_xaxis.is_xaxis());
 		}
 	});
 }
@@ -40,16 +44,16 @@ fn bench_dynamic_rec(a:&mut Bencher){
 	let mut tree=dfs::GenTreeDfsOrder::from_dfs_inorder(||{0},12);
 
 	a.iter(||{
-		let i=tree.create_down_mut().with_axis(true);
+		let i=tree.create_down_mut().with_axis(TAxis::XAXIS);
 		i.dfs_preorder(|(is_xaxis,item)|{
-			if is_xaxis{
+			if is_xaxis.is_xaxis(){
 				*item=5;
 			}else{
 				*item=3;
 			}
 
 
-			dostuff(is_xaxis);
+			dostuff(is_xaxis.is_xaxis());
 		});
 	});
 }
