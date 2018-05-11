@@ -554,6 +554,47 @@ pub mod par{
     }
 }
 
+/*
+pub trait CIter{
+    type Visitor:CTreeIterator<Item=Self::Item>;
+    type Item;
+
+    ///Calls the closure in dfs preorder (left,right,root).
+    ///Takes advantage of the callstack to do dfs.
+    fn dfs_inorder(&self,a:Self::Visitor,mut func:impl FnMut(Self::Item)){
+        fn rec<C:CIter+?Sized>(itt:&C,a:C::Visitor,func:&mut impl FnMut(C::Item)){
+            
+            let (nn,rest)=a.next();
+            
+            match rest{
+                Some((left,right))=>{
+                    rec(itt,left,func);
+                    func(nn);
+                    rec(itt,right,func);
+                },
+                None=>{
+                    func(nn);
+                }
+            }
+        }
+        rec(self,a,&mut func);
+    }
+    /*
+    fn dfs_inorder_iter<X:Iterator<Item=isize>>(&self,a:Self::Visitor,mut func:impl FnMut(Self::Item))->impl Iterator<Item=Self::Item>{
+        unimplemented!()
+    }
+    */
+
+    fn bfs(&self,aa:Self::Visitor,mut func:impl FnMut(Self::Item)){
+        let mut a=VecDeque::new();
+        a.push_back(aa);
+        let b=BfsIter{a};
+        for i in b{
+            func(i);
+        }
+    }
+}
+*/
 
 ///All binary tree visitors implement this.
 pub trait CTreeIterator:Sized{
@@ -575,7 +616,7 @@ pub trait CTreeIterator:Sized{
         LevelIter::new(self,start_depth)
     }
 
-    fn with_extra<F:Fn(&Self::Item,X)->(X,X),X:Clone>(self,func:F,extra:X)->Extra<F,X,Self>{
+    fn with_extra<F:Fn(&Self::Item,X)->(X,X)+Copy,X:Clone>(self,func:F,extra:X)->Extra<F,X,Self>{
         Extra{c:self,extra,func}
     }
 
@@ -608,8 +649,8 @@ pub trait CTreeIterator:Sized{
 
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
-    fn dfs_preorder<F:FnMut(Self::Item)>(self,mut func:F){
-        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+    fn dfs_preorder(self,mut func:impl FnMut(Self::Item)){
+        fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item)){
             
             let (nn,rest)=a.next();
             func(nn);
@@ -629,8 +670,8 @@ pub trait CTreeIterator:Sized{
 
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
-    fn dfs_inorder<F:FnMut(Self::Item)>(self,mut func:F){
-        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+    fn dfs_inorder(self,mut func:impl FnMut(Self::Item)){
+        fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item)){
             
             let (nn,rest)=a.next();
             
@@ -651,8 +692,8 @@ pub trait CTreeIterator:Sized{
 
     ///Calls the closure in dfs postorder (right,left,root).
     ///Takes advantage of the callstack to do dfs.
-    fn dfs_postorder<F:FnMut(Self::Item)>(self,mut func:F){
-        fn rec<C:CTreeIterator,F:FnMut(C::Item)>(a:C,func:&mut F){
+    fn dfs_postorder(self,mut func:impl FnMut(Self::Item)){
+        fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item)   ){
             
             let (nn,rest)=a.next();
             match rest{
@@ -784,24 +825,24 @@ impl<C:CTreeIterator> CTreeIterator for AxisIter<C>{
 
 pub use extra::Extra;
 mod extra{
-    use super::*;
+    use super::*;       
 
-    pub struct Extra<F:Fn(&C::Item,X)->(X,X),X:Clone,C:CTreeIterator>{
+    pub struct Extra<F:Fn(&C::Item,X)->(X,X)+Copy,X:Clone,C:CTreeIterator>{
         pub c:C,
         pub extra:X,
         pub func:F
     }
 
-
-    fn clone_func<CI,F:Fn(&CI,X)->(X,X),X:Clone>(func:&F)->F{
+    /*
+    fn clone_func<CI,F:Fn(&CI,X)->(X,X)+Copy,X:Clone>(func:&F)->F{
         unsafe{
             let mut k=std::mem::uninitialized();
             std::ptr::copy(func,&mut k,1);
             k
         }
-    }
+    }*/
 
-    impl<F:Fn(&C::Item,X)->(X,X),X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
+    impl<F:Fn(&C::Item,X)->(X,X)+Copy,X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
         type Item=(X,C::Item);
         fn next(self)->(Self::Item,Option<(Self,Self)>){
             
@@ -815,9 +856,9 @@ mod extra{
 
                     let (a,b)=(self.func)(&mut n,self.extra);
                     
-                    let left=Extra{c:left,extra:a,func:clone_func(&self.func)};
+                    let left=Extra{c:left,extra:a,func:self.func};
                     
-                    let right=Extra{c:right,extra:b,func:clone_func(&self.func)};
+                    let right=Extra{c:right,extra:b,func:self.func};
                     ((ex,n),Some((left,right)))
                 },
                 None=>{
