@@ -411,6 +411,10 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     }
 }
 
+
+
+
+
 ///Bfs Iterator. Each call to next() returns the next
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
@@ -596,6 +600,10 @@ pub trait CIter{
 }
 */
 
+pub trait ExactSizeCTreeIterator:CTreeIterator{
+    fn number_of_levels_left()->usize;
+
+}
 ///All binary tree visitors implement this.
 pub trait CTreeIterator:Sized{
     type Item;
@@ -603,6 +611,7 @@ pub trait CTreeIterator:Sized{
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
     fn next(self)->(Self::Item,Option<(Self,Self)>);
+
 
     fn with_axis(self,xaxis:TAxis)->AxisIter<Self>{
         AxisIter::new(xaxis,self)
@@ -1118,12 +1127,12 @@ fn testy(){
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T:CTreeIterator>{
     pub inner:T,
-    leveld:Depth
+    pub depth:Depth
 }
 impl <T:CTreeIterator> LevelIter<T>{
     #[inline(always)]
-    fn new(a:T,leveld:Depth)->LevelIter<T>{
-        return LevelIter{inner:a,leveld};
+    fn new(a:T,depth:Depth)->LevelIter<T>{
+        return LevelIter{inner:a,depth};
     }
 
 }
@@ -1133,15 +1142,15 @@ impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
     type Item=(Depth,T::Item);
     #[inline(always)]
     fn next(self)->(Self::Item,Option<(Self,Self)>){
-        let LevelIter{inner,leveld}=self;
+        let LevelIter{inner,depth}=self;
         let (nn,rest)=inner.next();
 
-        let r=(leveld,nn);
+        let r=(depth,nn);
         match rest{
             Some((left,right))=>{
-                let ln=leveld.next_down();
-                let ll=LevelIter{inner:left,leveld:ln};
-                let rr=LevelIter{inner:right,leveld:ln};
+                let ln=depth.next_down();
+                let ll=LevelIter{inner:left,depth:ln};
+                let rr=LevelIter{inner:right,depth:ln};
                 (r,Some((ll,rr)))
             },
             None=>{
