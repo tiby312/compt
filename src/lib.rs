@@ -1151,11 +1151,11 @@ fn testy(){
 
 
 ///A wrapper iterator that will additionally return the depth of each element.
-pub struct LevelIter<T:CTreeIterator>{
+pub struct LevelIter<T>{
     pub inner:T,
     pub depth:Depth
 }
-impl <T:CTreeIterator> LevelIter<T>{
+impl <T> LevelIter<T>{
     #[inline(always)]
     fn new(a:T,depth:Depth)->LevelIter<T>{
         return LevelIter{inner:a,depth};
@@ -1163,6 +1163,26 @@ impl <T:CTreeIterator> LevelIter<T>{
 
 }
 
+    
+impl<T:CTreeIteratorEx> CTreeIteratorEx for LevelIter<T>{
+    type LeafItem=(Depth,T::LeafItem);
+    type NonLeafItem=(Depth,T::NonLeafItem);
+    fn next(self)->LeafEx<Self::LeafItem,(Self::NonLeafItem,Self,Self)>{
+        let depth=self.depth;
+        match self.inner.next(){
+            LeafEx::Leaf(leaf)=>{
+                LeafEx::Leaf((depth,leaf))
+            },
+            LeafEx::NonLeaf((nonleaf,left,right))=>{
+                let left=LevelIter{inner:left,depth:Depth(depth.0+1)};
+                let right=LevelIter{inner:right,depth:Depth(depth.0+1)};
+                LeafEx::NonLeaf(((depth,nonleaf),left,right))
+            }
+        }
+    }
+
+
+}
 
 impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
     type Item=(Depth,T::Item);
