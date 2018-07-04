@@ -62,10 +62,9 @@
 //!```
 //!
 
-extern crate rayon;
-extern crate smallvec;
+//extern crate smallvec;
 use std::collections::vec_deque::VecDeque;
-use smallvec::SmallVec;
+//use smallvec::SmallVec;
 
 pub mod dfs{
     use super::*;
@@ -386,7 +385,7 @@ impl NodeIndex{
 ///in dfs order.
 ///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{
-    a:SmallVec<[C;16]>
+    a:Vec<C>
 }
 
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
@@ -483,7 +482,7 @@ impl<B,C:CTreeIterator,F:Fn(C::Item)->B> CTreeIterator for Map<C,F>{
 }
 
 
-
+/*
 
 //TODO use this!!!!
 pub mod par{
@@ -556,7 +555,7 @@ pub mod par{
         let level=LevelIter::new(it,Depth(0));
         recc(level,depth_to_switch,&func,&f2,&f3,val)
     }
-}
+}*/
 
 /*
 pub trait CIter{
@@ -603,6 +602,33 @@ pub trait CIter{
 pub trait ExactSizeCTreeIterator:CTreeIterator{
     fn number_of_levels_left()->usize;
 
+}
+
+pub enum LeafEx<A,B>{
+    Leaf(A),
+    NonLeaf(B)
+}
+pub trait CTreeIteratorEx:Sized{
+    type LeafItem;
+    type NonLeafItem;
+    fn next(self)->LeafEx<Self::LeafItem,(Self::NonLeafItem,Self,Self)>;
+
+
+    ///Calls the closure in dfs preorder (left,right,root).
+    ///Takes advantage of the callstack to do dfs.
+    fn dfs_preorder(self,mut func:impl FnMut(LeafEx<Self::LeafItem,Self::NonLeafItem>)){
+        
+        match self.next(){
+            LeafEx::Leaf(a)=>{
+                func(LeafEx::Leaf(a));
+            },
+            LeafEx::NonLeaf((a,left,right))=>{
+                func(LeafEx::NonLeaf(a));
+                left.dfs_preorder(&mut func);
+                right.dfs_preorder(&mut func);
+            }
+        }
+    }
 }
 ///All binary tree visitors implement this.
 pub trait CTreeIterator:Sized{
@@ -651,7 +677,7 @@ pub trait CTreeIterator:Sized{
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its queue.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
-        let mut v=SmallVec::new();
+        let mut v=Vec::new();
         v.push(self);
         DfsPreorderIter{a:v}
     }
