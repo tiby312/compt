@@ -1,32 +1,35 @@
 //!## Summary
-//! A Complete Binary Tree library.
-//! It is internally represented as a 1D vec.
-//! Provides a way to get mutable references to children nodes simultaneously. Useful for parallelizing divide and conquer style problems.
-//! There is no api to add and remove nodes. The existence of the tree implies that 2k-1 elements already exist. It is a full tree.
-//! Provides tree visitors that implement the below trait. They can be combined together using zip().
+//! A library that provides a useful binary tree visitor trait with common visiting strategies such as dfs_inorder,bfs,etc.
+//! It also provides two flavors of a complete binary tree data structure. One laid out in bfs, and one laid out in dfs in order in memory.
+//! However users can still implement their own tree data structures and take advantage of the utility of the binary tree visitor trait.
 //!
 //!```
 //!pub trait CTreeIterator:Sized{
 //!    type Item;
-//!    ///Consume this visitor, and produce the element it was pointing to
-//!    ///along with it's children visitors.
-//!    fn next(self)->(Self::Item,Option<(Self,Self)>);
+//!    type Extra;
+//!    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
 //!}
 //!```
+//! If you have a visitor of a node, you can call next() on it to consume it, and produce the value of that node, plus
+//! the children nodes. Sometimes, non leaf nodes contain additional data that does not apply to leaf nodes. This is 
+//! the purpose of the Extra associated type. Users can choose to define it to be some data that only non leaf nodes provide.
 //!
 //!## Goals
 //!
-//!To create a safe and compact complete binary tree data structure that provides an api
-//!that parallel algorithms can exploit.
+//! To provide a useful complete binary tree visitor trait. That has some similar features to the Iterator trait,
+//! such as zip(), and map().
+//!
+//! To create a safe and compact complete binary tree data structure that provides an api
+//! that parallel algorithms can exploit.
 //!
 //!## Unsafety
 //!
-//!With a regular slice, getting one mutable reference to an element will borrow the
-//!entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
-//!in BFS order. Therefore one can safely assume that if (starting at the root),
-//!one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
-//!to get *two* mutable references to the children,
-//!they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
+//! With a regular slice, getting one mutable reference to an element will borrow the
+//! entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
+//! in BFS order. Therefore one can safely assume that if (starting at the root),
+//! one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
+//! to get *two* mutable references to the children,
+//! they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
 //!
 //!## Example
 //!```
@@ -62,15 +65,10 @@
 //!```
 //!
 
-
 pub mod bfs_order;
 pub mod dfs_order;
 
-
-//extern crate smallvec;
 use std::collections::vec_deque::VecDeque;
-//use smallvec::SmallVec;
-
 
 ///Compute the number of nodes in a complete binary tree based on a height.
 #[inline(always)]
@@ -86,8 +84,8 @@ pub struct DfsPreorderIter<C:CTreeIterator>{
     a:Vec<C>
 }
 
+//TODO implement exact size.
 
-//TODO implement exact size???
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
 
@@ -131,7 +129,6 @@ impl<C:CTreeIterator> Iterator for BfsIter<C>{
         match queue.pop_front(){
             Some(e)=>{
                 let (nn,rest)=e.next();
-                //func(nn);
                 let extra=match rest{
                     Some((extra,left,right))=>{
                         queue.push_back(left);
@@ -171,21 +168,8 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 
                 let extra=extra.unwrap();
 
-                //Fn Closures don't automatically implement clone.
                 let ll=Map{func:self.func.clone(),inner:left};
                 let rr=Map{func:self.func,inner:right};
-
-                /*
-                let (ll,rr)=unsafe{
-                    let mut ll:Map<C,F>=std::mem::uninitialized();
-                    let mut rr:Map<C,F>=std::mem::uninitialized();
-                    ll.inner=left;
-                    rr.inner=right;
-                    std::ptr::copy(&self.func,&mut ll.func,1);
-                    std::ptr::copy(&self.func,&mut rr.func,1);
-                    (ll,rr)
-                };
-                */
                 (res,Some((extra,ll,rr)))
             },
             None=>{
@@ -197,123 +181,6 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
     }
 }
 
-
-/*
-
-//TODO use this!!!!
-pub mod par{
-    use super::*;
-
-    use super::*;
-    pub trait AxisTrait:Copy+Send{
-        type Next:AxisTrait;
-        fn next(&self)->Self::Next;
-        fn is_xaxis(&self)->bool;
-    }
-
-
-    #[derive(Copy,Clone,Debug)]
-    pub struct XAXIS;
-
-    #[derive(Copy,Clone,Debug)]
-    pub struct YAXIS;
-    impl AxisTrait for XAXIS{
-        type Next=YAXIS;
-        fn next(&self)->YAXIS{
-            YAXIS
-        }
-        fn is_xaxis(&self)->bool{
-            true
-        }
-    }
-    impl AxisTrait for YAXIS{
-        type Next=XAXIS;
-        fn next(&self)->XAXIS{
-            XAXIS
-        }
-        fn is_xaxis(&self)->bool{
-            false
-        }
-    }
-
-    //TODO put htis in the iterator trait
-    pub fn in_preorder_parallel<Y:Send,X:Send,T:CTreeIterator<Item=X>+Send,F1:Fn(X,Y)->(Y,Y)+Sync,F2:Fn(Y,Y)->Y+Sync,F3:Fn(X,Y)->Y+Sync>(
-            it:T,func:F1,f2:F2,f3:F3,depth_to_switch:Depth,val:Y)->Y{
-
-
-        fn recc<Y:Send,X:Send,T:CTreeIterator<Item=(Depth,X)>+Send,F1:Fn(X,Y)->(Y,Y)+Sync,F2:Fn(Y,Y)->Y+Sync,F3:Fn(X,Y)->Y+Sync>(s:T,depth_to_switch:Depth,func:&F1,f2:&F2,f3:&F3,val:Y)->Y{
-            let ((depth,nn),rest)=s.next();
-            
-            match rest{
-                Some((left,right))=>{
-
-                    let (yl,yr)=func(nn,val);
-                    /*
-                    let (a,b)=if depth_to_switch.0>=depth.0{
-                        rayon::join(
-                            move ||recc(left,depth,func,f2,f3,yl),
-                            move ||recc(right,depth,func,f2,f3,yr)
-                        )
-                    }else{
-                        */
-                     let (a,b)=   (recc(left,depth,func,f2,f3,yl),
-                        recc(right,depth,func,f2,f3,yr));
-                    //};
-
-                    f2(a,b)
-                },
-                None=>{
-                    f3(nn,val)
-                }
-            }
-        }
-
-        let level=LevelIter::new(it,Depth(0));
-        recc(level,depth_to_switch,&func,&f2,&f3,val)
-    }
-}*/
-
-/*
-pub trait CIter{
-    type Visitor:CTreeIterator<Item=Self::Item>;
-    type Item;
-
-    ///Calls the closure in dfs preorder (left,right,root).
-    ///Takes advantage of the callstack to do dfs.
-    fn dfs_inorder(&self,a:Self::Visitor,mut func:impl FnMut(Self::Item)){
-        fn rec<C:CIter+?Sized>(itt:&C,a:C::Visitor,func:&mut impl FnMut(C::Item)){
-            
-            let (nn,rest)=a.next();
-            
-            match rest{
-                Some((left,right))=>{
-                    rec(itt,left,func);
-                    func(nn);
-                    rec(itt,right,func);
-                },
-                None=>{
-                    func(nn);
-                }
-            }
-        }
-        rec(self,a,&mut func);
-    }
-    /*
-    fn dfs_inorder_iter<X:Iterator<Item=isize>>(&self,a:Self::Visitor,mut func:impl FnMut(Self::Item))->impl Iterator<Item=Self::Item>{
-        unimplemented!()
-    }
-    */
-
-    fn bfs(&self,aa:Self::Visitor,mut func:impl FnMut(Self::Item)){
-        let mut a=VecDeque::new();
-        a.push_back(aa);
-        let b=BfsIter{a};
-        for i in b{
-            func(i);
-        }
-    }
-}
-*/
 
 
 //TODO enhance to use this!!
@@ -412,99 +279,6 @@ pub trait CTreeIterator:Sized{
 
 }
 
-
-
-
-/*
-#[derive(Copy,Clone,Debug)]
-pub enum TLeaf{
-    IsNotLeaf = 0,
-    IsLeaf = 1
-}
-
-pub struct IsLeaf<C:CTreeIterator>(C);
-
-
-impl<C:CTreeIterator> CTreeIterator for IsLeaf<C>{
-    type Item=(TLeaf,C::Item);
-    fn next(self)->(Self::Item,Option<(Self,Self)>){
-        let (n,rest)=self.0.next();
-        
-        match rest{
-            Some((left,right))=>{
-                let left=IsLeaf(left);
-                let right=IsLeaf(right);
-                ((TLeaf::IsNotLeaf,n),Some((left,right)))
-            },
-            None=>{
-                ((TLeaf::IsLeaf,n),None)
-            }
-        }
-    }
-}
-
-*/
-
-/*
-#[derive(Copy,Clone,Debug)]
-pub enum TAxis{
-    XAXIS=0,
-    YAXIS=1
-}
-
-impl TAxis{
-    pub fn is_xaxis(&self)->bool{
-        match self{
-            &TAxis::XAXIS=>{
-                true
-            },
-            &TAxis::YAXIS=>{
-                false
-            }
-
-        }
-    }
-}
-
-pub struct AxisIter<C:CTreeIterator>{
-    is_xaxis:TAxis,
-    c:C
-}
-impl<C:CTreeIterator> AxisIter<C>{
-    fn new(is_xaxis:TAxis,c:C)->AxisIter<C>{
-        AxisIter{is_xaxis,c}
-    }
-}
-impl<C:CTreeIterator> CTreeIterator for AxisIter<C>{
-    type Item=(TAxis,C::Item);
-    fn next(self)->(Self::Item,Option<(Self,Self)>){
-        let (n,rest)=self.c.next();
-        let nn=(self.is_xaxis,n);
-
-        match rest{
-            Some((left,right))=>{
-                let is_xaxis=match self.is_xaxis{
-                    TAxis::XAXIS=>{
-                        TAxis::YAXIS
-                    },
-                    TAxis::YAXIS=>{
-                        TAxis::XAXIS
-                    }
-                };
-                //let is_xaxis=!(self.is_xaxis);
-                let left=AxisIter{is_xaxis,c:left};
-                let right=AxisIter{is_xaxis,c:right};
-                (nn,Some((left,right)))
-            },
-            None=>{
-                (nn,None)
-            }
-        }
-    }
-}
-
-*/
-
 pub use extra::Extra;
 mod extra{
     use super::*;       
@@ -583,68 +357,6 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
         }
     }
 }
-
-/*
-pub use wrap::WrapGen;
-
-mod wrap{
-    use super::*;
-    //TODO remove this!!! make users use the concrete wrappers instead.
-    ///Allows to traverse down from a visitor twice by creating a new visitor that borrows the other.
-    pub struct WrapGen<'a,T:CTreeIterator+'a>{
-        a:T,
-        _p:PhantomData<&'a mut T>
-    }
-    impl<'a,T:CTreeIterator+'a> WrapGen<'a,T>{
-        #[inline(always)]
-        pub fn new(a:&'a mut T)->WrapGen<'a,T>{
-            let ff=unsafe{
-                let mut ff=std::mem::uninitialized();
-                std::ptr::copy(a, &mut ff, 1);
-                ff
-            };
-            WrapGen{a:ff,_p:PhantomData}
-        }
-    }
-    
-    pub struct Bo<'a,T:'a>{
-        a:T,
-        _p:PhantomData<&'a mut T>
-    }
-    
-    impl<'a,T:'a> Bo<'a,T>{
-
-        pub fn get_mut (&mut self)->&mut T{
-            &mut self.a
-        }
-        pub fn get(&self)->&T{
-            &self.a
-        }
-    }
-
-    impl<'a,T:CTreeIterator+'a> CTreeIterator for WrapGen<'a,T>{
-        type Item=Bo<'a,T::Item>;
-        #[inline(always)]
-        fn next(self)->(Self::Item,Option<(Self,Self)>){
-            let WrapGen{a,_p}=self;
-  
-            let (item,mm)=a.next();
-            let item=Bo{a:item,_p:PhantomData};
-            match mm{
-                Some((left,right))=>{
-                    let left=WrapGen{a:left,_p:PhantomData};
-                    let right=WrapGen{a:right,_p:PhantomData};
-                    return (item,Some((left,right)));
-                },
-                None=>{
-                    return (item,None);
-                }
-            }
-        }
-    }
-}*/
-
-
 
 
 #[derive(Copy,Clone)]

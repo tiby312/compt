@@ -1,4 +1,8 @@
 use super::*;
+//! Provides a way to get mutable references to children nodes simultaneously. Useful for parallelizing divide and conquer style problems.
+//! There is no api to add and remove nodes. The existence of the tree implies that 2k-1 elements already exist. It is a full tree.
+//! Provides tree visitors that implement the below trait. They can be combined together using zip().
+//!
 
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
