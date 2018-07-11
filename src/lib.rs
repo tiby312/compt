@@ -1,6 +1,7 @@
 //!## Summary
-//! A library that provides a useful binary tree visitor trait with common visiting strategies such as dfs_inorder,bfs,etc.
-//! It also provides two flavors of a complete binary tree data structure. One laid out in bfs, and one laid out in dfs in order in memory.
+//! A library that provides a useful binary tree visitor trait with common visiting strategies such as dfs_inorder or bfs, etc.
+//! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
+//! One laid out in bfs, and one laid out in dfs in order in memory.
 //! However users can still implement their own tree data structures and take advantage of the utility of the binary tree visitor trait.
 //!
 //!```
@@ -13,6 +14,10 @@
 //! If you have a visitor of a node, you can call next() on it to consume it, and produce the value of that node, plus
 //! the children nodes. Sometimes, non leaf nodes contain additional data that does not apply to leaf nodes. This is 
 //! the purpose of the Extra associated type. Users can choose to define it to be some data that only non leaf nodes provide.
+//!
+//! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
+//! Being able to create the same mutable reference some other way.
+//! So this property provides a way to get mutable references to children nodes simultaneously safely. Useful for parallelizing divide and conquer style problems.
 //!
 //!## Goals
 //!
@@ -65,7 +70,9 @@
 //!```
 //!
 
+///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
+///A complete binary tree toredd in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
 use std::collections::vec_deque::VecDeque;
@@ -84,8 +91,8 @@ pub struct DfsPreorderIter<C:CTreeIterator>{
     a:Vec<C>
 }
 
-//TODO implement exact size.
 
+//TODO implement exact size.
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
 
@@ -110,9 +117,6 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
         }
     }
 }
-
-
-
 
 
 ///Bfs Iterator. Each call to next() returns the next
@@ -154,6 +158,8 @@ pub struct Map<C,F>{
     func:F,
     inner:C
 }
+
+
 impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CTreeIterator for Map<C,F>{
     type Item=B;
     type Extra=E;
@@ -190,7 +196,7 @@ pub trait ExactSizeCTreeIterator:CTreeIterator{
 }
 */
 
-///All binary tree visitors implement this.
+///The trait this crate revoles around.
 pub trait CTreeIterator:Sized{
     type Item;
     type Extra;
@@ -199,27 +205,28 @@ pub trait CTreeIterator:Sized{
     ///along with it's children visitors.
     fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
 
+    ///Iterator Adapter to also produce the depth each iteration. 
     fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
         LevelIter::new(self,start_depth)
     }
 
+    /*
     fn with_extra<F:Fn(&Self::Item,X)->(X,X)+Copy,X:Clone>(self,func:F,extra:X)->Extra<F,X,Self>{
         Extra{c:self,extra,func}
     }
+    */
 
     ///Combine two tree visitors.
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
         Zip::new(self,f)
     }
 
+    ///Map iterator adapter
     fn map<B,E,F:Fn(Self::Item,Option<Self::Extra>)->(B,Option<E>)>(self,func:F)->Map<Self,F>{
         Map{func,inner:self}
     }
 
-
     ///Provides an iterator that returns each element in bfs order.
-    ///A callback version is not provided because a queue would still need to be used,
-    ///So it wouldnt be able to take advantage of the stack anyway.
     fn bfs_iter(self)->BfsIter<Self>{
         let mut a=VecDeque::new();
         a.push_back(self);
@@ -227,14 +234,14 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
-    ///This one relies on dynamic allocation for its queue.
+    ///This one relies on dynamic allocation for its stack.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
         let mut v=Vec::new();
         v.push(self);
         DfsPreorderIter{a:v}
     }
 
-    ///Calls the closure in dfs preorder (left,right,root).
+    ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     fn dfs_preorder(self,mut func:impl FnMut(Self::Item,Option<Self::Extra>)){
         fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item,Option<C::Extra>)){
@@ -276,8 +283,9 @@ pub trait CTreeIterator:Sized{
         }
         rec(self,&mut func);
     }
-
 }
+
+
 
 pub use extra::Extra;
 mod extra{
@@ -317,8 +325,6 @@ mod extra{
         }
     }
 }
-
-
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
@@ -370,8 +376,6 @@ impl Depth{
     }
 }
 
-
-
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T>{
     pub inner:T,
@@ -384,8 +388,6 @@ impl <T> LevelIter<T>{
     }
 
 }
-
-    
 
 impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
     type Item=(Depth,T::Item);

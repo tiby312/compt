@@ -1,8 +1,4 @@
 use super::*;
-//! Provides a way to get mutable references to children nodes simultaneously. Useful for parallelizing divide and conquer style problems.
-//! There is no api to add and remove nodes. The existence of the tree implies that 2k-1 elements already exist. It is a full tree.
-//! Provides tree visitors that implement the below trait. They can be combined together using zip().
-//!
 
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
@@ -15,12 +11,6 @@ pub struct GenTree<T:Send> {
 
 impl<T:Send> GenTree<T> {
     
-    /*
-    pub fn from_parr<M:par::Makerr2<Item=T>>()->GenTree<T>{
-        //TODO finish
-        unimplemented!();
-    }
-    */
     #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
@@ -38,19 +28,6 @@ impl<T:Send> GenTree<T> {
         }
         tree
     }
-    /*
-    ///Create a complete binary tree using the specified node generating function.
-    pub fn from_dfs_backwards<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
-        assert!(height>=1);
-        let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
-        {
-            let t=tree.create_down_mut();
-            t.dfs_postorder(|node:&mut T,_|{
-                *node=func();
-            });
-        }
-        tree
-    }*/
 
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
