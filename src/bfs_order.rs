@@ -1,9 +1,18 @@
 use super::*;
 
+
 ///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
 ///Height is atleast 1.
 ///Elements stored in BFS order.
 ///Has 2<sup>k-1</sup> elements where k is the height.
+///## Unsafety
+///
+/// With a regular slice, getting one mutable reference to an element will borrow the
+/// entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
+/// in BFS order. Therefore one can safely assume that if (starting at the root),
+/// one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
+/// to get *two* mutable references to the children,
+/// they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
 pub struct GenTree<T:Send> {
     nodes: Vec<T>,
     height: usize,
@@ -195,9 +204,10 @@ impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
 
 }
 
+
 mod cons{
     use super::*;
-    struct DownTConsume<'a,T:Send+'a>{
+    pub struct DownTConsume<'a,T:Send+'a>{
         remaining:*mut GenTree<T>,
         nodeid:NodeIndex,
         first_leaf:NodeIndex,
