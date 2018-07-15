@@ -50,6 +50,7 @@ pub struct DfsPreorderIter<C:CTreeIterator>{
 }
 
 
+impl<C:CTreeIterator> std::iter::FusedIterator for DfsPreorderIter<C>{}
 //TODO implement exact size.
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
@@ -84,6 +85,8 @@ pub struct BfsIter<C:CTreeIterator>{
     a:VecDeque<C>
 }
 
+impl<C:CTreeIterator> std::iter::FusedIterator for BfsIter<C>{}
+
 impl<C:CTreeIterator> Iterator for BfsIter<C>{
     type Item=(C::Item,Option<C::Extra>);
     fn next(&mut self)->Option<Self::Item>{
@@ -115,7 +118,6 @@ pub struct Map<C,F>{
     func:F,
     inner:C
 }
-
 impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CTreeIterator for Map<C,F>{
     type Item=B;
     type Extra=E;
@@ -165,12 +167,6 @@ pub trait CTreeIterator:Sized{
     fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
         LevelIter::new(self,start_depth)
     }
-
-    /*
-    fn with_extra<F:Fn(&Self::Item,X)->(X,X)+Copy,X:Clone>(self,func:F,extra:X)->Extra<F,X,Self>{
-        Extra{c:self,extra,func}
-    }
-    */
 
     ///Combine two tree visitors.
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
@@ -240,48 +236,6 @@ pub trait CTreeIterator:Sized{
         rec(self,&mut func);
     }
 }
-
-
-/*
-pub use extra::Extra;
-mod extra{
-    use super::*;       
-
-    pub struct Extra<F:Fn(&C::Item,X)->(X,X)+Copy,X:Clone,C:CTreeIterator>{
-        pub c:C,
-        pub extra:X,
-        pub func:F
-    }
-
-
-    impl<F:Fn(&C::Item,X)->(X,X)+Copy,X:Clone,C:CTreeIterator> CTreeIterator for Extra<F,X,C>{
-        type Item=(X,C::Item);
-        type Extra=C::Extra;
-        fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>){
-            
-            
-            let (mut n,rest)=self.c.next();
-            
-            let ex=self.extra.clone();
-
-            match rest{
-                Some((extra,left,right))=>{
-
-                    let (a,b)=(self.func)(&mut n,self.extra);
-                    
-                    let left=Extra{c:left,extra:a,func:self.func};
-                    
-                    let right=Extra{c:right,extra:b,func:self.func};
-                    ((ex,n),Some((extra,left,right)))
-                },
-                None=>{
-                    ((ex,n),None)
-                }
-            }
-        }
-    }
-}
-*/
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
