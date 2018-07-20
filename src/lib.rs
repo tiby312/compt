@@ -150,7 +150,14 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 //TODO enhance to use this!!
 /*
 pub trait ExactSizeCTreeIterator:CTreeIterator{
-    fn height(&self)->usize;
+    fn get_height(&self)->usize;
+    ///Provides a dfs preorder iterator. Unlike the callback version,
+    ///This one relies on dynamic allocation for its stack.
+    fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
+        let mut v=Vec::with_capacity(self.get_height());
+        v.push(self);
+        DfsPreorderIter{a:v}
+    }    
 }
 */
 
@@ -179,16 +186,16 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Provides an iterator that returns each element in bfs order.
-    fn bfs_iter(self)->BfsIter<Self>{
-        let mut a=VecDeque::new();
+    fn bfs_iter(self,capacity:usize)->BfsIter<Self>{
+        let mut a=VecDeque::with_capacity(capacity);
         a.push_back(self);
         BfsIter{a}
     }
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
-    fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
-        let mut v=Vec::new();
+    fn dfs_preorder_iter(self,capacity:usize)->DfsPreorderIter<Self>{
+        let mut v=Vec::with_capacity(capacity);
         v.push(self);
         DfsPreorderIter{a:v}
     }
