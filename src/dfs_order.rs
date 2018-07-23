@@ -17,30 +17,6 @@ fn testy(){
 
 }
 
-///Visitor functions use this type to determine what node to visit.
-///The nodes in the tree are kept in the tree in BFS order.
-#[derive(Copy,Clone,Debug)]
-struct NodeIndexDfs(usize);
-
-impl NodeIndexDfs{
-    #[inline(always)]
-    fn get_children(self,diff:usize) -> (NodeIndexDfs, NodeIndexDfs) {
-        //println!("id={:?}",self.0);
-
-        //000000000000000
-        //       0
-        //   0       0
-        // 0   0   0   0
-        //0 0 0 0 0 0 0 0
-
-        let NodeIndexDfs(a) = self;
-        (NodeIndexDfs(a-diff), NodeIndexDfs(a+diff))
-    }
-}
-
-
-use std::marker::PhantomData;
-
 pub struct GenTreeDfsOrder<T>{
     nodes: Vec<T>,
     height:usize
@@ -67,10 +43,7 @@ impl<T> GenTreeDfsOrder<T>{
     #[inline(always)]
     pub fn from_dfs_inorder<F:FnMut()->T>(mut func:F,height:usize)->GenTreeDfsOrder<T>{
         let num=compute_num_nodes(height);
-        let mut nodes=Vec::with_capacity(num);
-        for _ in 0..num{
-            nodes.push(func());
-        }
+        let nodes=(0..num).map(|_|func()).collect();
         GenTreeDfsOrder{nodes,height}
     }
 
