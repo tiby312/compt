@@ -24,7 +24,7 @@ impl<T:Send> GenTree<T> {
     pub fn get_height(&self) -> usize {
         self.height
     }
-
+    /*
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_dfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
         assert!(height>=1);
@@ -37,6 +37,7 @@ impl<T:Send> GenTree<T> {
         }
         tree
     }
+    */
 
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
@@ -81,13 +82,14 @@ impl<T:Send> GenTree<T> {
         let k=DownT{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len())};
         k
     }
-
+    /*
     #[inline(always)]
     ///Create a mutable visitor struct
     pub fn create_down_mut(&mut self)->DownTMut<T>{
         let k=DownTMut{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len()),phantom:PhantomData};
         k
     }
+    */
 
     #[inline(always)]
     ///Consume the tree and return each element to the user in dfs order.
@@ -132,13 +134,13 @@ impl NodeIndex{
 
 
 use std::marker::PhantomData;
-
+/*
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:Send+'a>{
-    remaining:*mut GenTree<T>,
-    nodeid:NodeIndex,
-    first_leaf:NodeIndex,
-    phantom:PhantomData<&'a mut T>
+    curr:&'a mut T,
+    base:usize,
+    depth:usize,
+    height:usize
 }
 
 unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
@@ -153,11 +155,12 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
         //Unsafely get a mutable reference to this nodeid.
         //Since at the start there was only one DownTMut that pointed to the root,
         //there is no danger of two DownTMut's producing a reference to the same node.
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        if self.nodeid.0>=self.first_leaf.0{
+        if depth==height-1{
             (a,None)
         }else{
- 
+            let diff=(curr as *mut T) as usize-base;
+
+            unsafe{(curr as *mut T).add(2*a+1)}
             let (l,r)=self.nodeid.get_children();
             
             let j=(   
@@ -169,6 +172,7 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
         }
     }
 }
+*/
 
 
 ///Tree visitor that returns a reference to each element in the tree.

@@ -87,8 +87,7 @@ impl<T> GenTreeDfsOrder<T>{
     }
     #[inline(always)]
     pub fn create_down(&self)->DownT<T>{
-        let k=self.nodes.len()+1;
-        DownT{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:k/4}
+        DownT{remaining:&self.nodes}
     }
 
     #[inline(always)]
@@ -105,42 +104,35 @@ impl<T> GenTreeDfsOrder<T>{
 }
 
 
-///Tree visitor that returns a reference to each element in the tree.
+
+///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownT<'a,T:'a>{
-    remaining:&'a GenTreeDfsOrder<T>,
-    nodeid:NodeIndexDfs,
-    span:usize,
-}
-impl<'a,T:'a> DownT<'a,T>{
-    pub fn create_wrap<'b>(&'b self)->DownT<'b,T>{
-        DownT{remaining:self.remaining,nodeid:self.nodeid,span:self.span}
-    }
+    remaining:&'a [T],
 }
 
+
+impl<'a,T:'a> DownT<'a,T>{
+    pub fn create_wrap<'b>(&'b self)->DownT<'b,T>{
+        DownT{remaining:self.remaining}
+    }
+}
 impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
     type Item=&'a T;
     type Extra=();
     #[inline(always)]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
- 
-        let a=&self.remaining.nodes[self.nodeid.0];
-        
-        if self.span==0{
-            (a,None)
+        let remaining=self.remaining;
+        if remaining.len()==1{
+            (&remaining[0],None)
         }else{
-            let (l,r)=self.nodeid.get_children(self.span);
-            
-            let j=( 
-                (),    
-                DownT{remaining:self.remaining,nodeid:l,span:self.span/2},
-                DownT{remaining:self.remaining,nodeid:r,span:self.span/2}
-            );
-            (a,Some(j))
+            let mid=remaining.len()/2;
+            let (left,rest)=remaining.split_at(mid);
+            let (middle,right)=rest.split_first().unwrap();
+            (middle,Some(((),DownT{remaining:left},DownT{remaining:right})))
         }
     }
- 
-
 }
+
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:'a>{
     remaining:&'a mut [T],
@@ -168,45 +160,3 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
         }
     }
 }
-/*
-///Tree visitor that returns a mutable reference to each element in the tree.
-pub struct DownTMut<'a,T:'a>{
-    remaining:*mut GenTreeDfsOrder<T>,
-    nodeid:NodeIndexDfs,
-    span:usize,
-    phantom:PhantomData<&'a mut T>
-}
-
-
-impl<'a,T:'a> DownTMut<'a,T>{
-    pub fn create_wrap_mut<'b>(&'b mut self)->DownTMut<'b,T>{
-        DownTMut{remaining:self.remaining,nodeid:self.nodeid,span:self.span,phantom:self.phantom}
-    }
-}
-impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
-    type Item=&'a mut T;
-    type Extra=();
-    #[inline(always)]
-    fn next(self)->(Self::Item,Option<((),Self,Self)>){
-        
-        //Unsafely get a mutable reference to this nodeid.
-        //Since at the start there was only one DownTMut that pointed to the root,
-        //there is no danger of two DownTMut's producing a reference to the same node.
-        let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-        if self.span==0{
-            (a,None)
-        }else{
-            //let node_len=unsafe{(*self.remaining).nodes.len()};
-
-            let (l,r)=self.nodeid.get_children(self.span);
-            //println!("id={:?} span={:?} children={:?}",self.nodeid.0,self.span,(l,r));
-            let j=(  
-                (),   
-                DownTMut{remaining:self.remaining,nodeid:l,span:self.span/2,phantom:PhantomData},
-                DownTMut{remaining:self.remaining,nodeid:r,span:self.span/2,phantom:PhantomData}
-            );
-            (a,Some(j))
-        }
-    }
-}
-*/
