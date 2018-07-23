@@ -93,8 +93,7 @@ impl<T> GenTreeDfsOrder<T>{
 
     #[inline(always)]
     pub fn create_down_mut(&mut self)->DownTMut<T>{
-        let k=self.nodes.len()+1;
-        DownTMut{remaining:self,nodeid:NodeIndexDfs(self.nodes.len()/2),span:k/4,phantom:PhantomData}
+        DownTMut{remaining:&mut self.nodes}
     }
 
     #[inline(always)]
@@ -104,6 +103,7 @@ impl<T> GenTreeDfsOrder<T>{
     }
     
 }
+
 
 ///Tree visitor that returns a reference to each element in the tree.
 pub struct DownT<'a,T:'a>{
@@ -141,7 +141,34 @@ impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
  
 
 }
+///Tree visitor that returns a mutable reference to each element in the tree.
+pub struct DownTMut<'a,T:'a>{
+    remaining:&'a mut [T],
+}
 
+
+impl<'a,T:'a> DownTMut<'a,T>{
+    pub fn create_wrap_mut<'b>(&'b mut self)->DownTMut<'b,T>{
+        DownTMut{remaining:self.remaining}
+    }
+}
+impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
+    type Item=&'a mut T;
+    type Extra=();
+    #[inline(always)]
+    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+        let remaining=self.remaining;
+        if remaining.len()==1{
+            (&mut remaining[0],None)
+        }else{
+            let mid=remaining.len()/2;
+            let (left,rest)=remaining.split_at_mut(mid);
+            let (middle,right)=rest.split_first_mut().unwrap();
+            (middle,Some(((),DownTMut{remaining:left},DownTMut{remaining:right})))
+        }
+    }
+}
+/*
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:'a>{
     remaining:*mut GenTreeDfsOrder<T>,
@@ -149,8 +176,6 @@ pub struct DownTMut<'a,T:'a>{
     span:usize,
     phantom:PhantomData<&'a mut T>
 }
-
-unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
 
 impl<'a,T:'a> DownTMut<'a,T>{
@@ -184,3 +209,4 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
         }
     }
 }
+*/
