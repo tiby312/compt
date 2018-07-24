@@ -28,12 +28,15 @@
 //! that parallel algorithms can exploit.
 //!
 
+#![feature(ptr_offset_from)]
+
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
 ///A complete binary tree toredd in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
 use std::collections::vec_deque::VecDeque;
+
 
 ///Compute the number of nodes in a complete binary tree based on a height.
 #[inline(always)]
@@ -48,7 +51,11 @@ pub fn compute_num_nodes(height:usize)->usize{
 pub struct DfsPreorderIter<C:CTreeIterator>{
     a:Vec<C>
 }
-
+impl<C:CTreeIterator> Drop for DfsPreorderIter<C>{
+    fn drop(&mut self){
+        println!("capacity={:?}",self.a.capacity());
+    }
+}
 
 impl<C:CTreeIterator> std::iter::FusedIterator for DfsPreorderIter<C>{}
 //TODO implement exact size.
@@ -61,8 +68,8 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
                 let (i,next)=x.next();
                 let extra=match next{
                     Some((extra,left,right))=>{
-                        self.a.push(left);
                         self.a.push(right);
+                        self.a.push(left);
                         Some(extra)
                     },
                     _=>{None}
@@ -83,6 +90,11 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
 ///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C:CTreeIterator>{
     a:VecDeque<C>
+}
+impl<C:CTreeIterator> Drop for BfsIter<C>{
+    fn drop(&mut self){
+        println!("dequeue capacity={:?}",self.a.capacity());
+    }
 }
 
 impl<C:CTreeIterator> std::iter::FusedIterator for BfsIter<C>{}
@@ -147,19 +159,9 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 
 
 
-//TODO enhance to use this!!
-/*
-pub trait ExactSizeCTreeIterator:CTreeIterator{
-    fn get_height(&self)->usize;
-    ///Provides a dfs preorder iterator. Unlike the callback version,
-    ///This one relies on dynamic allocation for its stack.
-    fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
-        let mut v=Vec::with_capacity(self.get_height());
-        v.push(self);
-        DfsPreorderIter{a:v}
-    }    
-}
-*/
+
+pub trait FixedDepthCTreeIterator:CTreeIterator{}
+
 
 ///The trait this crate revoles around.
 pub trait CTreeIterator:Sized{
@@ -170,6 +172,12 @@ pub trait CTreeIterator:Sized{
     ///along with it's children visitors.
     fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
 
+    ///Return the levels remaining including the one that will be produced by consuming this iterator.
+    ///So if you first made this object from the root for a tree of size 5, it should return 5.
+    ///Think of is as height-depth
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        (0,None)
+    }
     ///Iterator Adapter to also produce the depth each iteration. 
     fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
         LevelIter::new(self,start_depth)
@@ -186,16 +194,20 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Provides an iterator that returns each element in bfs order.
-    fn bfs_iter(self,capacity:usize)->BfsIter<Self>{
-        let mut a=VecDeque::with_capacity(capacity);
+    fn bfs_iter(self)->BfsIter<Self>{
+        //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
+        let cap=(2u32.pow(self.level_remaining_hint().0 as u32))/2;
+        let mut a=VecDeque::with_capacity(cap as usize);
+        println!("bfs order cap={:?}",a.capacity());
         a.push_back(self);
         BfsIter{a}
     }
 
+
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
-    fn dfs_preorder_iter(self,capacity:usize)->DfsPreorderIter<Self>{
-        let mut v=Vec::with_capacity(capacity);
+    fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
+        let mut v=Vec::with_capacity(self.level_remaining_hint().0);
         v.push(self);
         DfsPreorderIter{a:v}
     }

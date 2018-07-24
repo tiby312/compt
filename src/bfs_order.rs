@@ -37,7 +37,17 @@ impl<T:Send> GenTree<T> {
         }
         tree
     }
+
     */
+
+    #[inline(always)]
+    pub fn from_vec(vec:Vec<T>,height:usize)->Result<GenTree<T>,&'static str>{
+        if 2_usize.pow(height as u32)==vec.len()+1{
+            Ok(GenTree{nodes:vec,height})
+        }else{
+            Err("Not a power of two")
+        }
+    }
 
     ///Create a complete binary tree using the specified node generating function.
     pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
@@ -79,24 +89,20 @@ impl<T:Send> GenTree<T> {
     #[inline(always)]
     ///Create a immutable visitor struct
     pub fn create_down(&self)->DownT<T>{
-        let k=DownT{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len())};
+        let k=DownT{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
         k
     }
-    /*
+    
     #[inline(always)]
     ///Create a mutable visitor struct
     pub fn create_down_mut(&mut self)->DownTMut<T>{
-        let k=DownTMut{remaining:self,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(self.nodes.len()),phantom:PhantomData};
+        let base=(&mut self.nodes[0] as *mut T);
+        let k=DownTMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
         k
     }
-    */
+    
 
-    #[inline(always)]
-    ///Consume the tree and return each element to the user in dfs order.
-    pub fn into_dfs_preorder<F:FnMut(T)>(self,func:F){
-        cons::downt_into_dfs_preorder(self,func);
-    }
-
+  
     #[inline(always)]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn get_nodes(&self)->&[T]{
@@ -131,19 +137,13 @@ impl NodeIndex{
 }
 
 
-
-
-use std::marker::PhantomData;
-/*
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:Send+'a>{
     curr:&'a mut T,
-    base:usize,
+    base:*mut T,
     depth:usize,
     height:usize
 }
-
-unsafe impl<'a,T:Send+'a> std::marker::Send for DownTMut<'a,T>{}
 
 impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
@@ -155,31 +155,38 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
         //Unsafely get a mutable reference to this nodeid.
         //Since at the start there was only one DownTMut that pointed to the root,
         //there is no danger of two DownTMut's producing a reference to the same node.
-        if depth==height-1{
-            (a,None)
+        if self.depth==self.height-1{
+            (self.curr,None)
         }else{
-            let diff=(curr as *mut T) as usize-base;
+            let (left,right)=unsafe{
+                let diff=(self.curr as *mut T).offset_from(self.base);
+                let left=unsafe{&mut *(self.base as *mut T).offset(2*diff+1)};
+                let right=unsafe{&mut *(self.base as *mut T).offset(2*diff+2)};
+                (left,right)
+            };
 
-            unsafe{(curr as *mut T).add(2*a+1)}
-            let (l,r)=self.nodeid.get_children();
-            
             let j=(   
                 (),  
-                DownTMut{remaining:self.remaining,nodeid:l,first_leaf:self.first_leaf,phantom:PhantomData},
-                DownTMut{remaining:self.remaining,nodeid:r,first_leaf:self.first_leaf,phantom:PhantomData}
+                DownTMut{curr:left,base:self.base,depth:self.depth+1,height:self.height},
+                DownTMut{curr:right,base:self.base,depth:self.depth+1,height:self.height}
             );
-            (a,Some(j))
+            (self.curr,Some(j))
         }
     }
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        let diff=self.height-self.depth;
+        (diff,Some(diff))
+    }
 }
-*/
+
 
 
 ///Tree visitor that returns a reference to each element in the tree.
 pub struct DownT<'a,T:Send+'a>{
     remaining:&'a GenTree<T>,
     nodeid:NodeIndex,
-    first_leaf:NodeIndex,
+    depth:usize,
+    height:usize
 }
 
 impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
@@ -190,7 +197,7 @@ impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
  
         let a=&self.remaining.nodes[self.nodeid.0];
         
-        if self.nodeid.0>=self.first_leaf.0{
+        if self.depth==self.height-1{
             (a,None)
         }else{
  
@@ -198,63 +205,14 @@ impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
             
             let j=(     
                 (),
-                DownT{remaining:self.remaining,nodeid:l,first_leaf:self.first_leaf},
-                DownT{remaining:self.remaining,nodeid:r,first_leaf:self.first_leaf}
+                DownT{remaining:self.remaining,nodeid:l,height:self.height,depth:self.depth+1},
+                DownT{remaining:self.remaining,nodeid:r,height:self.height,depth:self.depth+1}
             );
             (a,Some(j))
         }
     }
- 
-
-}
-
-
-mod cons{
-    use super::*;
-    pub struct DownTConsume<'a,T:Send+'a>{
-        remaining:*mut GenTree<T>,
-        nodeid:NodeIndex,
-        first_leaf:NodeIndex,
-        phantom:PhantomData<&'a T>
-    }
-
-    pub fn downt_into_dfs_preorder<T:Send,F:FnMut(T)>(mut tree:GenTree<T>,mut func:F){
-        {
-            let t=DownTConsume{remaining:&mut tree,nodeid:NodeIndex(0),first_leaf:NodeIndex::first_leaf(tree.nodes.len()),phantom:PhantomData};
-            
-            t.dfs_preorder(|a,_|func(a));
-        }
-        for a in tree.nodes.drain(..){
-            std::mem::forget(a);
-        }
-    }
-
-    impl<'a,T:Send+'a> CTreeIterator for DownTConsume<'a,T>{
-        type Item=T;
-        type Extra=();
-        #[inline(always)]
-        fn next(self)->(Self::Item,Option<((),Self,Self)>){
-     
-            //Unsafely copy each element and give it to the user.
-            //We will make sure not to call drop() on the source
-            //after we iterate through all of the tree.
-            let mut val=unsafe{std::mem::uninitialized()};
-            let a=unsafe{&mut (*self.remaining).nodes[self.nodeid.0]};
-            unsafe{std::ptr::copy(&mut val,a,1)};
-
-            if self.nodeid.0>=self.first_leaf.0{
-                (val,None)
-            }else{
-     
-                let (l,r)=self.nodeid.get_children();
-                
-                let j=(  
-                    (),   
-                    DownTConsume{remaining:self.remaining,nodeid:l,first_leaf:self.first_leaf,phantom:PhantomData},
-                    DownTConsume{remaining:self.remaining,nodeid:r,first_leaf:self.first_leaf,phantom:PhantomData}
-                );
-                (val,Some(j))
-            }
-        }  
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        let diff=self.height-self.depth;
+        (diff,Some(diff))
     }
 }

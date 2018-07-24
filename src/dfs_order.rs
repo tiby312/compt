@@ -1,21 +1,5 @@
 use super::*;
 
-#[test]
-fn testy(){
-    let mut k=dfs::GenTreeDfsOrder::from_dfs_inorder(||0,5);
-
-    let j=k.create_down_mut();
-
-    let k:LevelIter<dfs::DownTMut<usize>>=j.with_depth();//LevelIter<NdIter<T>>;
-
-
-    {
-        let (depth,bla)=k.into_inner();
-        
-        let wrap=bla.create_wrap().with_depth(depth);
-    }
-
-}
 
 pub struct GenTreeDfsOrder<T>{
     nodes: Vec<T>,
@@ -104,7 +88,14 @@ impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
             (middle,Some(((),DownT{remaining:left},DownT{remaining:right})))
         }
     }
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        //TODO better optimize
+        let left=((self.remaining.len()+1) as f64).log2() as usize;
+        println!("level_remaining={:?}",left);
+        (left,Some(left))
+    }
 }
+
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct DownTMut<'a,T:'a>{
@@ -117,6 +108,7 @@ impl<'a,T:'a> DownTMut<'a,T>{
         DownTMut{remaining:self.remaining}
     }
 }
+
 impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
     type Extra=();
@@ -131,5 +123,11 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
             let (middle,right)=rest.split_first_mut().unwrap();
             (middle,Some(((),DownTMut{remaining:left},DownTMut{remaining:right})))
         }
+    }
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        //TODO better optimize
+        let left=((self.remaining.len()+1) as f64).log2() as usize;
+        println!("level_remaining={:?}",left);
+        (left,Some(left))
     }
 }

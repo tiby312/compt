@@ -6,6 +6,52 @@ use compt::*;
 
 use test::*;
 
+
+
+#[test]
+fn dfs_mut(){
+	let mut k=compt::dfs_order::GenTreeDfsOrder::from_vec(vec![0,1,2,3,4,5,6],3).unwrap();
+
+	let mut res=Vec::new();
+	for (a,_) in k.create_down_mut().dfs_preorder_iter(){
+		res.push(*a);
+	}
+	assert_eq!(&res,&[3,1,0,2,5,4,6]);
+}
+#[test]
+fn bfs_mut(){
+	let mut k=compt::bfs_order::GenTree::from_vec(vec![0,1,2,3,4,5,6],3).unwrap();
+
+	let mut res=Vec::new();
+	k.create_down_mut().dfs_preorder(|a,_|{
+		res.push(*a);
+	});
+	assert_eq!(&res,&[0,1,3,4,2,5,6]);
+}
+
+#[test]
+fn dfs(){
+	let mut k=compt::dfs_order::GenTreeDfsOrder::from_vec(vec![0,1,2,3,4,5,6],3).unwrap();
+
+	let mut res=Vec::new();
+	k.create_down().dfs_preorder(|a,_|{
+		res.push(*a);
+	});
+	assert_eq!(&res,&[3,1,0,2,5,4,6]);
+}
+#[test]
+fn bfs(){
+	let mut k=compt::bfs_order::GenTree::from_vec(vec![0,1,2,3,4,5,6],3).unwrap();
+
+	let mut res=Vec::new();
+	k.create_down().dfs_preorder(|a,_|{
+		res.push(*a);
+	});
+	assert_eq!(&res,&[0,1,3,4,2,5,6]);
+}
+
+
+
 /*
 #[test]
 fn test(){
@@ -34,7 +80,7 @@ fn test(){
 }
 */
 
-
+/*
 #[test]
 fn test_parallel(){
 
@@ -51,3 +97,4 @@ fn test_parallel(){
 
 	assert!(false);
 }
+*/
