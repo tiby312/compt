@@ -1,9 +1,12 @@
 //!## Summary
-//! A library that provides a useful binary tree visitor trait with common default implemenations for visiting strategies such as dfs_inorder or bfs, etc.
+//! A library that provides a complete binary tree visitor trait with default implemenations for visiting strategies such as dfs_inorder or bfs, etc.
+//! Some adaptors are also provided that let you map, zip, or optionally also produce the depth on every call to next().
 //! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
-//! One laid out in bfs, and one laid out in dfs in order in memory.
-//! However users can still implement their own tree data structures and take advantage of the utility of the binary tree visitor trait.
-//! This is thr trait that this crate revoles around:
+//! One laid out in bfs, and one laid out in dfs in order in memory. Both of these flavors assume that every node in the tree is the same type.
+//! The visitor trait is more flexible than this, however. With the Extra associated type, users can implement a visitor for
+//! tree data structures that have different types for the nonleafs and leafs.
+//! 
+//! This is the trait that this crate revoles around:
 //!```
 //!pub trait CTreeIterator:Sized{
 //!    type Item;
@@ -16,23 +19,41 @@
 //! the purpose of the Extra associated type. Users can choose to define it to be some data that only non leaf nodes provide.
 //!
 //! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
-//! Being able to create the same mutable reference some other way.
+//! being able to create the same mutable reference some other way.
 //! So this property provides a way to get mutable references to children nodes simultaneously safely. Useful for parallelizing divide and conquer style problems.
 //!
 //!## Goals
 //!
-//! To provide a useful complete binary tree visitor trait. That has some similar features to the Iterator trait,
-//! such as zip(), and map().
+//! To provide a useful complete binary tree visitor trait, that has some similar features to the Iterator trait,
+//! such as zip(), and map(), and that can be used in parallel divide and conquer style problems.
 //!
-//! To create a safe and compact complete binary tree data structure that provides an api
-//! that parallel algorithms can exploit.
 //!
+//!
+//!## Unsafety in the provided two tree implementations
+//!
+//! With a regular Vec, getting one mutable reference to an element will borrow the
+//! entire Vec. However the two provided trees have invaiants that lets us make guarentees about
+//! which elements can be mutably borrowed at the same time. With the bfs tree, the children
+//! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guarenteed that the parent,
+//! and the two children are all distinct elements and so mutable references two all of them can exist at the same time.
+//! The dfs tree on every call to next() we use split_at_mut() to split the current slice we have into three parts:
+//! the current node, the elements ot the left, and the elements to the right.
+//!
+//!## Memory Locality
+//!
+//! Ordering the elements in dfs in order is likely better for divide and conquer style problems.
+//! The main memory access pattern that we want to be fast is the following: If I have a parent, I hope to be able 
+//! to access the children fast. So we want the children to be close to the parent.
+//! While in bfs order, the root's children are literally right next to it, the children of nodes in the the second
+//! to last level of the tree could be extremly far apart (possibly n/2 elements away!).
+//! With dfs order, as you go down the tree, you gain better and better locality.
 
 #![feature(ptr_offset_from)]
+#![feature(trusted_len)]
 
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
-///A complete binary tree toredd in a Vec<T> laid out in dfs in order.
+///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
 use std::collections::vec_deque::VecDeque;
@@ -49,16 +70,15 @@ pub fn compute_num_nodes(height:usize)->usize{
 ///in dfs order.
 ///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{
-    a:Vec<C>
-}
-impl<C:CTreeIterator> Drop for DfsPreorderIter<C>{
-    fn drop(&mut self){
-        println!("capacity={:?}",self.a.capacity());
-    }
+    a:Vec<C>,
+    level_hint:(usize,Option<usize>)
 }
 
+
 impl<C:CTreeIterator> std::iter::FusedIterator for DfsPreorderIter<C>{}
-//TODO implement exact size.
+
+unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsPreorderIter<C>{}
+
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
 
@@ -82,6 +102,12 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
             }
         }
     }
+
+    fn size_hint(&self)->(usize,Option<usize>){
+        let height=self.level_hint.0;
+        let len=2usize.pow(height as u32)-1;
+        (len,Some(len))
+    }
 }
 
 
@@ -89,16 +115,13 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C:CTreeIterator>{
-    a:VecDeque<C>
+    a:VecDeque<C>,
+    level_hint:(usize,Option<usize>)
 }
-impl<C:CTreeIterator> Drop for BfsIter<C>{
-    fn drop(&mut self){
-        println!("dequeue capacity={:?}",self.a.capacity());
-    }
-}
+
 
 impl<C:CTreeIterator> std::iter::FusedIterator for BfsIter<C>{}
-
+unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for BfsIter<C>{}
 impl<C:CTreeIterator> Iterator for BfsIter<C>{
     type Item=(C::Item,Option<C::Extra>);
     fn next(&mut self)->Option<Self::Item>{
@@ -122,6 +145,11 @@ impl<C:CTreeIterator> Iterator for BfsIter<C>{
                 None
             }
         }
+    }
+    fn size_hint(&self)->(usize,Option<usize>){
+        let height=self.level_hint.0;
+        let len=2usize.pow(height as u32)-1;
+        (len,Some(len))
     }
 }
 
@@ -158,14 +186,19 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 }
 
 
-
-
-pub trait FixedDepthCTreeIterator:CTreeIterator{}
+///If implemented, then the level_remaining_hint must return the exact height of the tree.
+///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
+///so those iterators can implement TrustedLen in this case.
+pub unsafe trait FixedDepthCTreeIterator:CTreeIterator{
+}
 
 
 ///The trait this crate revoles around.
+///A complete binary tree visitor.
 pub trait CTreeIterator:Sized{
+    ///The common item produced for both leafs and non leafs.
     type Item;
+    ///A extra item can be returned for non leafs.
     type Extra;
 
     ///Consume this visitor, and produce the element it was pointing to
@@ -174,18 +207,20 @@ pub trait CTreeIterator:Sized{
 
     ///Return the levels remaining including the one that will be produced by consuming this iterator.
     ///So if you first made this object from the root for a tree of size 5, it should return 5.
-    ///Think of is as height-depth
+    ///Think of is as height-depth.
+    ///This is used to make good allocations when doing dfs and bfs.
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         (0,None)
     }
+
     ///Iterator Adapter to also produce the depth each iteration. 
     fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
-        LevelIter::new(self,start_depth)
+        LevelIter{inner:self,depth:start_depth}
     }
 
     ///Combine two tree visitors.
     fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
-        Zip::new(self,f)
+        Zip{a:self,b:f}
     }
 
     ///Map iterator adapter
@@ -198,9 +233,10 @@ pub trait CTreeIterator:Sized{
         //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
         let cap=(2u32.pow(self.level_remaining_hint().0 as u32))/2;
         let mut a=VecDeque::with_capacity(cap as usize);
-        println!("bfs order cap={:?}",a.capacity());
+        //println!("bfs order cap={:?}",a.capacity());
+        let level_hint=self.level_remaining_hint();
         a.push_back(self);
-        BfsIter{a}
+        BfsIter{a,level_hint}
     }
 
 
@@ -208,8 +244,9 @@ pub trait CTreeIterator:Sized{
     ///This one relies on dynamic allocation for its stack.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
         let mut v=Vec::with_capacity(self.level_remaining_hint().0);
+        let level_hint=self.level_remaining_hint();
         v.push(self);
-        DfsPreorderIter{a:v}
+        DfsPreorderIter{a:v,level_hint}
     }
 
     ///Calls the closure in dfs preorder (root,left,right).
@@ -263,12 +300,6 @@ pub struct Zip<T1:CTreeIterator,T2:CTreeIterator>{
     b:T2,
 }
 
-impl<T1:CTreeIterator,T2:CTreeIterator>  Zip<T1,T2>{
-    #[inline(always)]
-    fn new(a:T1,b:T2)->Zip<T1,T2>{
-        Zip{a:a,b:b}
-    }
-}
 
 impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
     type Item=(T1::Item,T2::Item);
@@ -296,27 +327,14 @@ impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
 
 
 #[derive(Copy,Clone)]
-///A level descriptor. This is passed to LevelIter.
+///A level descriptor.
 pub struct Depth(pub usize);
 
-impl Depth{
-    #[inline(always)]
-    pub fn next_down(&self)->Depth{
-        Depth(self.0+1)
-    }
-}
 
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T>{
     pub inner:T,
     pub depth:Depth
-}
-impl <T> LevelIter<T>{
-    #[inline(always)]
-    fn new(a:T,depth:Depth)->LevelIter<T>{
-        return LevelIter{inner:a,depth};
-    }
-
 }
 
 impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
@@ -330,7 +348,7 @@ impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
         let r=(depth,nn);
         match rest{
             Some((extra,left,right))=>{
-                let ln=depth.next_down();
+                let ln=Depth(depth.0+1);
                 let ll=LevelIter{inner:left,depth:ln};
                 let rr=LevelIter{inner:right,depth:ln};
                 (r,Some((extra,ll,rr)))

@@ -1,51 +1,29 @@
 use super::*;
 
+///Error indicating the vec that was passed is not a size that you would expect for the given height.
+pub struct NotCompleteTreeSizeErr;
 
-///The complete binary tree. Internally stores the elements in a Vec<T> so it is very compact.
+
+///Complete binary tree stored in BFS order.
 ///Height is atleast 1.
-///Elements stored in BFS order.
-///Has 2<sup>k-1</sup> elements where k is the height.
-///## Unsafety
-///
-/// With a regular slice, getting one mutable reference to an element will borrow the
-/// entire slice. The slice that GenTree uses, however, internally has the invariant that it is laid out
-/// in BFS order. Therefore one can safely assume that if (starting at the root),
-/// one had a mutable reference to a parent k, and one were to get the children using 2k+1 and 2k+2
-/// to get *two* mutable references to the children,
-/// they would be guarenteed to be distinct (from each other and also the parent) despite the fact that they belong to the same slice.
-pub struct GenTree<T:Send> {
+pub struct GenTree<T> {
     nodes: Vec<T>,
     height: usize,
 }
 
-impl<T:Send> GenTree<T> {
+impl<T> GenTree<T> {
     
     #[inline(always)]
     pub fn get_height(&self) -> usize {
         self.height
     }
-    /*
-    ///Create a complete binary tree using the specified node generating function.
-    pub fn from_dfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
-        assert!(height>=1);
-        let mut tree=GenTree::from_bfs(&mut ||{unsafe{std::mem::uninitialized()}},height);
-        {
-            let t=tree.create_down_mut();
-            t.dfs_preorder(|node:&mut T,_|{
-                *node=func();
-            });
-        }
-        tree
-    }
-
-    */
 
     #[inline(always)]
-    pub fn from_vec(vec:Vec<T>,height:usize)->Result<GenTree<T>,&'static str>{
+    pub fn from_vec(vec:Vec<T>,height:usize)->Result<GenTree<T>,NotCompleteTreeSizeErr>{
         if 2_usize.pow(height as u32)==vec.len()+1{
             Ok(GenTree{nodes:vec,height})
         }else{
-            Err("Not a power of two")
+            Err(NotCompleteTreeSizeErr)
         }
     }
 
@@ -64,27 +42,6 @@ impl<T:Send> GenTree<T> {
         }
     }
 
-    ///Visit every node in BFS order.
-    ///Due to underlying representation of the tree, this is just a fast loop.
-    pub fn bfs<F:FnMut(&T)>(&self,mut func:F){
-        for i in self.nodes.iter(){
-            func(i);
-        }
-    }
-
-    ///Visit every node in BFS order.
-    ///Due to underlying representation of the tree, this is just a fast loop.
-    pub fn bfs_mut<F:FnMut(&mut T)>(&mut self,mut func:F){
-        for i in self.nodes.iter_mut(){
-            func(i);
-        }
-    }
-    
-    #[inline(always)]
-    ///Create a Depth that can be passed to a LevelIter.
-    pub fn get_level_desc(&self)->Depth{
-        Depth(0)
-    }
     
     #[inline(always)]
     ///Create a immutable visitor struct
@@ -96,11 +53,10 @@ impl<T:Send> GenTree<T> {
     #[inline(always)]
     ///Create a mutable visitor struct
     pub fn create_down_mut(&mut self)->DownTMut<T>{
-        let base=(&mut self.nodes[0] as *mut T);
+        let base=&mut self.nodes[0] as *mut T;
         let k=DownTMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
         k
     }
-    
 
   
     #[inline(always)]
@@ -130,22 +86,22 @@ impl NodeIndex{
         let NodeIndex(a) = self;
         (NodeIndex(2 * a + 1), NodeIndex(2 * a + 2))
     }
-    #[inline(always)]
-    fn first_leaf(nodes:usize)->NodeIndex{
-        NodeIndex(nodes/2)
-    }
 }
 
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
-pub struct DownTMut<'a,T:Send+'a>{
+pub struct DownTMut<'a,T:'a>{
     curr:&'a mut T,
     base:*mut T,
     depth:usize,
     height:usize
 }
 
-impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
+
+unsafe impl<'a,T:'a> FixedDepthCTreeIterator for DownTMut<'a,T>{}
+
+
+impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
     type Item=&'a mut T;
     type Extra=();
 
@@ -160,8 +116,8 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
         }else{
             let (left,right)=unsafe{
                 let diff=(self.curr as *mut T).offset_from(self.base);
-                let left=unsafe{&mut *(self.base as *mut T).offset(2*diff+1)};
-                let right=unsafe{&mut *(self.base as *mut T).offset(2*diff+2)};
+                let left=&mut *(self.base as *mut T).offset(2*diff+1);
+                let right=&mut *(self.base as *mut T).offset(2*diff+2);
                 (left,right)
             };
 
@@ -182,14 +138,18 @@ impl<'a,T:Send+'a> CTreeIterator for DownTMut<'a,T>{
 
 
 ///Tree visitor that returns a reference to each element in the tree.
-pub struct DownT<'a,T:Send+'a>{
+pub struct DownT<'a,T:'a>{
     remaining:&'a GenTree<T>,
     nodeid:NodeIndex,
     depth:usize,
     height:usize
 }
 
-impl<'a,T:Send+'a> CTreeIterator for DownT<'a,T>{
+
+unsafe impl<'a,T:'a> FixedDepthCTreeIterator for DownT<'a,T>{}
+
+
+impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
     type Item=&'a T;
     type Extra=();
     #[inline(always)]

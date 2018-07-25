@@ -6,6 +6,9 @@ extern crate compt;
 use test::*;
 use compt::*;
 
+
+
+
 #[bench]
 fn bench_bfs_dfs(bench:&mut Bencher){
 	
@@ -15,7 +18,6 @@ fn bench_bfs_dfs(bench:&mut Bencher){
 			*a+=1;
 		}
 	});
-	assert!(false);
 
 	black_box(k);
 }
