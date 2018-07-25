@@ -62,37 +62,3 @@ fn bench_dfs_bfs(bench:&mut Bencher){
 	black_box(k);
 }
 
-
-/*
-macro_rules! gen_test{
-	($test:ident,$bench:ident,$function:ident)=>{
-		#[test]
-		fn $test(){
-
-			let mut k=&tree::from_vec(vec![0,1,2,3,4,5,6,7]);
-
-			let count=(0..);
-			k.create_down_mut().dfs_preorder(|(a,_)|{
-				*a=count.next().unwrap();
-			})
-
-		}
-
-		#[bench]
-		fn $bench(bench:&mut Bencher){
-			let mut k=[0;4000];
-			bench.iter(||{
-				$function(&mut k,|a,b|{
-					*a+=1;
-					*b+=1;
-				})
-			});
-			black_box(k);
-		}
-	}
-}
-
-gen_test!(iter_test,iter_bench,for_every_pair_iter);
-gen_test!(recc_test,recc_bench,for_every_pair_recc);
-gen_test!(unsafe_test,unsafe_bench,for_every_pair_unsafe_impl);
-*/

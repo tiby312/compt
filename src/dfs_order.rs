@@ -2,6 +2,7 @@ use super::*;
 
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
+#[derive(Copy,Clone,Debug)]
 pub struct NotCompleteTreeSizeErr;
 
 ///Complete binary tree stored in DFS inorder order.
