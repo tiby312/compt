@@ -129,6 +129,7 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
             (self.curr,Some(j))
         }
     }
+    #[inline(always)]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         let diff=self.height-self.depth;
         (diff,Some(diff))
@@ -171,6 +172,7 @@ impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
             (a,Some(j))
         }
     }
+    #[inline(always)]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         let diff=self.height-self.depth;
         (diff,Some(diff))

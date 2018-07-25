@@ -209,6 +209,7 @@ pub trait CTreeIterator:Sized{
     ///So if you first made this object from the root for a tree of size 5, it should return 5.
     ///Think of is as height-depth.
     ///This is used to make good allocations when doing dfs and bfs.
+    ///Defaults to (0,None)
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         (0,None)
     }

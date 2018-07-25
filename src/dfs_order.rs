@@ -77,6 +77,7 @@ pub struct DownT<'a,T:'a>{
 
 
 impl<'a,T:'a> DownT<'a,T>{
+    #[inline(always)]
     pub fn create_wrap<'b>(&'b self)->DownT<'b,T>{
         DownT{remaining:self.remaining}
     }
@@ -112,6 +113,7 @@ pub struct DownTMut<'a,T:'a>{
 
 
 impl<'a,T:'a> DownTMut<'a,T>{
+    #[inline(always)]
     pub fn create_wrap_mut<'b>(&'b mut self)->DownTMut<'b,T>{
         DownTMut{remaining:self.remaining}
     }
