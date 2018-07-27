@@ -56,6 +56,9 @@ pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
+///Provides functionality to measure the computation time of a tree on a level by level basis.
+pub mod timer;
+
 use std::collections::vec_deque::VecDeque;
 
 
@@ -78,6 +81,7 @@ pub struct DfsPreorderIter<C:CTreeIterator>{
 impl<C:CTreeIterator> std::iter::FusedIterator for DfsPreorderIter<C>{}
 
 unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsPreorderIter<C>{}
+impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for DfsPreorderIter<C>{}
 
 impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
@@ -122,6 +126,9 @@ pub struct BfsIter<C:CTreeIterator>{
 
 impl<C:CTreeIterator> std::iter::FusedIterator for BfsIter<C>{}
 unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for BfsIter<C>{}
+impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for BfsIter<C>{}
+
+
 impl<C:CTreeIterator> Iterator for BfsIter<C>{
     type Item=(C::Item,Option<C::Extra>);
     fn next(&mut self)->Option<Self::Item>{
@@ -191,6 +198,7 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthCTreeIterator:CTreeIterator{
 }
+
 
 
 ///The trait this crate revoles around.

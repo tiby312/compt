@@ -3,9 +3,52 @@
 
 extern crate test;
 extern crate compt;
+extern crate is_sorted;
 use compt::*;
+use is_sorted::IsSorted;
+
+use compt::timer::TreeTimerTrait;
+use std::time;
+use std::thread;
+
+#[test]
+fn test_timer(){
+	let mut k=compt::dfs_order::GenTreeDfsOrder::from_vec(vec![0;255],8).unwrap();
+	
+	let t=compt::timer::TreeTimer2::new(k.get_height());
+
+	fn recc<T:TreeTimerTrait>(a:compt::dfs_order::DownTMut<isize>,mut tt:T)->T::Bag{
+		let dur = time::Duration::from_millis(10);
+
+		tt.start();
+
+		let (_nn,rest) = a.next();
+		match rest{
+			Some((_extra,left,right))=>{
+				thread::sleep(dur);
+				let (l,r)=tt.next();
+				let a=recc(left,l);
+				let b=recc(right,r);
+				T::combine(a,b)
+			},
+			None=>{
+				thread::sleep(dur);
+				
+				tt.leaf_finish()
+			}
+		}
+	}
+
+	let a=recc(k.create_down_mut(),t);
+
+	let res=a.into_iter().collect::<Vec<f64>>();
 
 
+	res.iter().is_sorted_by(|a,b|a.partial_cmp(b).unwrap());
+
+	//println!("vals={:?}",res);
+	//assert!(false);
+}
 
 fn assert_length<I:std::iter::TrustedLen>(it:I){
 	let len=it.size_hint().0;
