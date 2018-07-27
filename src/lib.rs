@@ -14,9 +14,10 @@
 //!    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
 //!}
 //!```
-//! If you have a visitor of a node, you can call next() on it to consume it, and produce the value of that node, plus
+//! If you have a visitor, you can call next() on it to consume it, and produce the node it is visiting, plus
 //! the children nodes. Sometimes, non leaf nodes contain additional data that does not apply to leaf nodes. This is 
 //! the purpose of the Extra associated type. Users can choose to define it to be some data that only non leaf nodes provide.
+//! For the two provided implementations, both leafs and nonleafs have the same time, so in those cases we just use the empty type.
 //!
 //! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
 //! being able to create the same mutable reference some other way.
@@ -24,7 +25,7 @@
 //!
 //!## Goals
 //!
-//! To provide a useful complete binary tree visitor trait, that has some similar features to the Iterator trait,
+//! To provide a useful complete binary tree visitor trait that has some similar features to the Iterator trait,
 //! such as zip(), and map(), and that can be used in parallel divide and conquer style problems.
 //!
 //!
@@ -32,11 +33,11 @@
 //!## Unsafety in the provided two tree implementations
 //!
 //! With a regular Vec, getting one mutable reference to an element will borrow the
-//! entire Vec. However the two provided trees have invaiants that lets us make guarentees about
+//! entire Vec. However the two provided trees have invariants that let us make guarentees about
 //! which elements can be mutably borrowed at the same time. With the bfs tree, the children
 //! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guarenteed that the parent,
 //! and the two children are all distinct elements and so mutable references two all of them can exist at the same time.
-//! The dfs tree on every call to next() we use split_at_mut() to split the current slice we have into three parts:
+//! With the dfs implementation, on every call to next() we use split_at_mut() to split the current slice we have into three parts:
 //! the current node, the elements ot the left, and the elements to the right.
 //!
 //!## Memory Locality
