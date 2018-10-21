@@ -70,12 +70,81 @@ pub fn compute_num_nodes(height:usize)->usize{
 }
 
 
+pub struct DfsInOrderIter<C:CTreeIterator>{
+    a:Vec<(C::Item,Option<(C::Extra,C)>)>,
+    length:Option<usize>,
+    min_length:usize,
+    num:usize
+}
+
+
+impl<C:CTreeIterator>  DfsInOrderIter<C>{
+
+    fn add_all_lefts(stack:&mut Vec<(C::Item,Option<(C::Extra,C)>)>,node:C){
+        let mut target=Some(node);
+
+        loop{
+            let (i,next) = target.take().unwrap().next();
+            match next{
+                Some((extra,left,right))=>{
+                    let bleep=(i,Some((extra,right)));
+                    stack.push(bleep);
+                    target=Some(left);
+                },
+                None=>{
+                    let bleep=(i,None);
+                    stack.push(bleep);
+                    break;
+                }
+            }
+        }
+    }
+
+}
+impl<C:CTreeIterator> Iterator for DfsInOrderIter<C>{
+    type Item=(C::Item,Option<C::Extra>);
+
+    fn next(&mut self)->Option<Self::Item>{
+        
+        match self.a.pop(){
+            Some((i,extra))=>{
+                match extra{
+                    Some(extra)=>{
+                        let res=(i,Some(extra.0));
+                        DfsInOrderIter::add_all_lefts(&mut self.a,extra.1);
+                        self.num+=1;
+                        Some(res)
+                    },
+                    None=>{
+                        Some((i,None))
+                    }
+                }
+            },
+            None=>{
+                None
+            }
+        }       
+    }
+
+    fn size_hint(&self)->(usize,Option<usize>){
+        (self.min_length-self.num,self.length.map(|a|a-self.num))
+    }
+}
+
+
+impl<C:CTreeIterator> std::iter::FusedIterator for DfsInOrderIter<C>{}
+unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsInOrderIter<C>{}
+impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for DfsInOrderIter<C>{}
+
+
 ///Dfs iterator. Each call to next() will return the next element
 ///in dfs order.
 ///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{
     a:Vec<C>,
-    level_hint:(usize,Option<usize>)
+    length:Option<usize>,
+    min_length:usize,
+    num:usize
 }
 
 
@@ -99,7 +168,7 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
                     },
                     _=>{None}
                 };
-
+                self.num+=1;
                 Some((i,extra))
             },
             None=>{
@@ -109,9 +178,7 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
     }
 
     fn size_hint(&self)->(usize,Option<usize>){
-        let height=self.level_hint.0;
-        let len=2usize.pow(height as u32)-1;
-        (len,Some(len))
+        (self.min_length-self.num,self.length.map(|a|a-self.num))
     }
 }
 
@@ -121,7 +188,9 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
 ///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C:CTreeIterator>{
     a:VecDeque<C>,
-    level_hint:(usize,Option<usize>)
+    num:usize,
+    min_length:usize,
+    length:Option<usize>
 }
 
 
@@ -155,9 +224,7 @@ impl<C:CTreeIterator> Iterator for BfsIter<C>{
         }
     }
     fn size_hint(&self)->(usize,Option<usize>){
-        let height=self.level_hint.0;
-        let len=2usize.pow(height as u32)-1;
-        (len,Some(len))
+        (self.min_length-self.num,self.length.map(|a|a-self.num))
     }
 }
 
@@ -240,23 +307,49 @@ pub trait CTreeIterator:Sized{
 
     ///Provides an iterator that returns each element in bfs order.
     fn bfs_iter(self)->BfsIter<Self>{
+        let (levels,max_levels)=self.level_remaining_hint();
+        
         //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
-        let cap=(2u32.pow(self.level_remaining_hint().0 as u32))/2;
+        let cap=(2u32.pow(levels as u32))/2;
         let mut a=VecDeque::with_capacity(cap as usize);
-        //println!("bfs order cap={:?}",a.capacity());
-        let level_hint=self.level_remaining_hint();
+        
+        let min_length=2usize.pow(levels as u32)-1;
+        
+        let length=max_levels.map(|max_levels|2usize.pow(max_levels as u32)-1);
+
         a.push_back(self);
-        BfsIter{a,level_hint}
+        BfsIter{a,min_length,length,num:0}
     }
 
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
     fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
-        let mut v=Vec::with_capacity(self.level_remaining_hint().0);
-        let level_hint=self.level_remaining_hint();
-        v.push(self);
-        DfsPreorderIter{a:v,level_hint}
+        
+        let (levels,max_levels)=self.level_remaining_hint();
+        let mut a=Vec::with_capacity(levels);
+        //let level_hint=self.level_remaining_hint();
+        
+        a.push(self);
+        
+        let min_length=2usize.pow(levels as u32)-1;
+        let length=max_levels.map(|levels_max|2usize.pow(levels_max as u32)-1);
+        DfsPreorderIter{a,length,min_length,num:0}
+    }
+
+    ///TODO optimize use level remianing hint
+    fn dfs_inorder_iter(self)->DfsInOrderIter<Self>{
+        
+        let (levels,max_levels)=self.level_remaining_hint();
+        let mut a=Vec::with_capacity(levels);
+
+        let length=max_levels.map(|levels_max|2usize.pow(levels_max as u32)-1);
+
+        let min_length=2usize.pow(levels as u32)-1;
+        
+        DfsInOrderIter::add_all_lefts(&mut a,self);
+
+        DfsInOrderIter{a,min_length,length,num:0}
     }
 
     ///Calls the closure in dfs preorder (root,left,right).
