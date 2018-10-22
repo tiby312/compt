@@ -57,9 +57,10 @@ pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
+/*
 ///Provides functionality to measure the computation time of a tree on a level by level basis.
 pub mod timer;
-
+*/
 use std::collections::vec_deque::VecDeque;
 
 
@@ -69,7 +70,9 @@ pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
 }
 
-
+///Dfs in order iterator. Each call to next() will return the next element
+///in dfs in order.
+///Internally uses a Vec for the stack.
 pub struct DfsInOrderIter<C:CTreeIterator>{
     a:Vec<(C::Item,Option<(C::Extra,C)>)>,
     length:Option<usize>,
@@ -77,12 +80,10 @@ pub struct DfsInOrderIter<C:CTreeIterator>{
     num:usize
 }
 
-
 impl<C:CTreeIterator>  DfsInOrderIter<C>{
 
     fn add_all_lefts(stack:&mut Vec<(C::Item,Option<(C::Extra,C)>)>,node:C){
         let mut target=Some(node);
-
         loop{
             let (i,next) = target.take().unwrap().next();
             match next{
@@ -99,8 +100,8 @@ impl<C:CTreeIterator>  DfsInOrderIter<C>{
             }
         }
     }
-
 }
+
 impl<C:CTreeIterator> Iterator for DfsInOrderIter<C>{
     type Item=(C::Item,Option<C::Extra>);
 
@@ -137,7 +138,7 @@ unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsInOrderIter<
 impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for DfsInOrderIter<C>{}
 
 
-///Dfs iterator. Each call to next() will return the next element
+///Dfs preorder iterator. Each call to next() will return the next element
 ///in dfs order.
 ///Internally uses a Vec for the stack.
 pub struct DfsPreorderIter<C:CTreeIterator>{

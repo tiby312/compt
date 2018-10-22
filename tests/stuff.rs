@@ -10,7 +10,7 @@ use is_sorted::IsSorted;
 use compt::timer::TreeTimerTrait;
 use std::time;
 use std::thread;
-
+/*
 #[test]
 fn test_timer(){
 	let mut k=compt::dfs_order::GenTreeDfsOrder::from_vec(vec![0;255],8).unwrap();
@@ -49,6 +49,7 @@ fn test_timer(){
 	//println!("vals={:?}",res);
 	//assert!(false);
 }
+*/
 
 fn assert_length<I:std::iter::TrustedLen>(it:I){
 	assert_eq!(it.size_hint().0,it.size_hint().1.unwrap());
