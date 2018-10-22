@@ -1,6 +1,6 @@
 [package]
 name = "compt"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Ken Reed <kenakioreed@gmail.com>"]
 description = "A complete binary tree visitor library"
 license = "MIT/Apache-2.0"
