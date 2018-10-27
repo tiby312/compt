@@ -3,20 +3,20 @@
 //! Some adaptors are also provided that let you map, zip, or optionally also produce the depth on every call to next().
 //! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
 //! One laid out in bfs, and one laid out in dfs in order in memory. Both of these flavors assume that every node in the tree is the same type.
-//! The visitor trait is more flexible than this, however. With the Extra associated type, users can implement a visitor for
+//! The visitor trait is more flexible than this, however. With the NonLeafItem associated type, users can implement a visitor for
 //! tree data structures that have different types for the nonleafs and leafs.
 //! 
 //! This is the trait that this crate revoles around:
 //!```
-//!pub trait CTreeIterator:Sized{
+//!pub trait Visitor:Sized{
 //!    type Item;
-//!    type Extra;
-//!    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
+//!    type NonLeafItem;
+//!    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>);
 //!}
 //!```
 //! If you have a visitor, you can call next() on it to consume it, and produce the node it is visiting, plus
 //! the children nodes. Sometimes, non leaf nodes contain additional data that does not apply to leaf nodes. This is 
-//! the purpose of the Extra associated type. Users can choose to define it to be some data that only non leaf nodes provide.
+//! the purpose of the NonLeafItem associated type. Users can choose to define it to be some data that only non leaf nodes provide.
 //! For the two provided implementations, both leafs and nonleafs have the same time, so in those cases we just use the empty type.
 //!
 //! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
@@ -57,10 +57,7 @@ pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
-/*
-///Provides functionality to measure the computation time of a tree on a level by level basis.
-pub mod timer;
-*/
+
 use std::collections::vec_deque::VecDeque;
 
 
@@ -73,22 +70,22 @@ pub fn compute_num_nodes(height:usize)->usize{
 ///Dfs in order iterator. Each call to next() will return the next element
 ///in dfs in order.
 ///Internally uses a Vec for the stack.
-pub struct DfsInOrderIter<C:CTreeIterator>{
-    a:Vec<(C::Item,Option<(C::Extra,C)>)>,
+pub struct DfsInOrderIter<C:Visitor>{
+    a:Vec<(C::Item,Option<(C::NonLeafItem,C)>)>,
     length:Option<usize>,
     min_length:usize,
     num:usize
 }
 
-impl<C:CTreeIterator>  DfsInOrderIter<C>{
+impl<C:Visitor>  DfsInOrderIter<C>{
 
-    fn add_all_lefts(stack:&mut Vec<(C::Item,Option<(C::Extra,C)>)>,node:C){
+    fn add_all_lefts(stack:&mut Vec<(C::Item,Option<(C::NonLeafItem,C)>)>,node:C){
         let mut target=Some(node);
         loop{
             let (i,next) = target.take().unwrap().next();
             match next{
-                Some((extra,left,right))=>{
-                    let bleep=(i,Some((extra,right)));
+                Some((NonLeafItem,left,right))=>{
+                    let bleep=(i,Some((NonLeafItem,right)));
                     stack.push(bleep);
                     target=Some(left);
                 },
@@ -102,17 +99,17 @@ impl<C:CTreeIterator>  DfsInOrderIter<C>{
     }
 }
 
-impl<C:CTreeIterator> Iterator for DfsInOrderIter<C>{
-    type Item=(C::Item,Option<C::Extra>);
+impl<C:Visitor> Iterator for DfsInOrderIter<C>{
+    type Item=(C::Item,Option<C::NonLeafItem>);
 
     fn next(&mut self)->Option<Self::Item>{
         
         match self.a.pop(){
-            Some((i,extra))=>{
-                match extra{
-                    Some(extra)=>{
-                        let res=(i,Some(extra.0));
-                        DfsInOrderIter::add_all_lefts(&mut self.a,extra.1);
+            Some((i,NonLeafItem))=>{
+                match NonLeafItem{
+                    Some(NonLeafItem)=>{
+                        let res=(i,Some(NonLeafItem.0));
+                        DfsInOrderIter::add_all_lefts(&mut self.a,NonLeafItem.1);
                         self.num+=1;
                         Some(res)
                     },
@@ -133,15 +130,15 @@ impl<C:CTreeIterator> Iterator for DfsInOrderIter<C>{
 }
 
 
-impl<C:CTreeIterator> std::iter::FusedIterator for DfsInOrderIter<C>{}
-unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsInOrderIter<C>{}
-impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for DfsInOrderIter<C>{}
+impl<C:Visitor> std::iter::FusedIterator for DfsInOrderIter<C>{}
+unsafe impl<C:FixedDepthVisitor> std::iter::TrustedLen for DfsInOrderIter<C>{}
+impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for DfsInOrderIter<C>{}
 
 
 ///Dfs preorder iterator. Each call to next() will return the next element
 ///in dfs order.
 ///Internally uses a Vec for the stack.
-pub struct DfsPreorderIter<C:CTreeIterator>{
+pub struct DfsPreOrderIter<C:Visitor>{
     a:Vec<C>,
     length:Option<usize>,
     min_length:usize,
@@ -149,28 +146,28 @@ pub struct DfsPreorderIter<C:CTreeIterator>{
 }
 
 
-impl<C:CTreeIterator> std::iter::FusedIterator for DfsPreorderIter<C>{}
+impl<C:Visitor> std::iter::FusedIterator for DfsPreOrderIter<C>{}
 
-unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for DfsPreorderIter<C>{}
-impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for DfsPreorderIter<C>{}
+unsafe impl<C:FixedDepthVisitor> std::iter::TrustedLen for DfsPreOrderIter<C>{}
+impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for DfsPreOrderIter<C>{}
 
-impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
-    type Item=(C::Item,Option<C::Extra>);
+impl<C:Visitor> Iterator for DfsPreOrderIter<C>{
+    type Item=(C::Item,Option<C::NonLeafItem>);
 
     fn next(&mut self)->Option<Self::Item>{
         match self.a.pop(){
             Some(x)=>{
                 let (i,next)=x.next();
-                let extra=match next{
-                    Some((extra,left,right))=>{
+                let NonLeafItem=match next{
+                    Some((NonLeafItem,left,right))=>{
                         self.a.push(right);
                         self.a.push(left);
-                        Some(extra)
+                        Some(NonLeafItem)
                     },
                     _=>{None}
                 };
                 self.num+=1;
-                Some((i,extra))
+                Some((i,NonLeafItem))
             },
             None=>{
                 None
@@ -187,7 +184,7 @@ impl<C:CTreeIterator> Iterator for DfsPreorderIter<C>{
 ///Bfs Iterator. Each call to next() returns the next
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
-pub struct BfsIter<C:CTreeIterator>{
+pub struct BfsIter<C:Visitor>{
     a:VecDeque<C>,
     num:usize,
     min_length:usize,
@@ -195,29 +192,29 @@ pub struct BfsIter<C:CTreeIterator>{
 }
 
 
-impl<C:CTreeIterator> std::iter::FusedIterator for BfsIter<C>{}
-unsafe impl<C:FixedDepthCTreeIterator> std::iter::TrustedLen for BfsIter<C>{}
-impl<C:FixedDepthCTreeIterator> std::iter::ExactSizeIterator for BfsIter<C>{}
+impl<C:Visitor> std::iter::FusedIterator for BfsIter<C>{}
+unsafe impl<C:FixedDepthVisitor> std::iter::TrustedLen for BfsIter<C>{}
+impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for BfsIter<C>{}
 
 
-impl<C:CTreeIterator> Iterator for BfsIter<C>{
-    type Item=(C::Item,Option<C::Extra>);
+impl<C:Visitor> Iterator for BfsIter<C>{
+    type Item=(C::Item,Option<C::NonLeafItem>);
     fn next(&mut self)->Option<Self::Item>{
         let queue=&mut self.a;
         match queue.pop_front(){
             Some(e)=>{
                 let (nn,rest)=e.next();
-                let extra=match rest{
-                    Some((extra,left,right))=>{
+                let NonLeafItem=match rest{
+                    Some((NonLeafItem,left,right))=>{
                         queue.push_back(left);
                         queue.push_back(right);
-                        Some(extra)
+                        Some(NonLeafItem)
                     },
                     None=>{
                         None
                     }
                 };
-                Some((nn,extra))
+                Some((nn,NonLeafItem))
             },
             None=>{
                 None
@@ -234,27 +231,27 @@ pub struct Map<C,F>{
     func:F,
     inner:C
 }
-impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CTreeIterator for Map<C,F>{
+impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Visitor for Map<C,F>{
     type Item=B;
-    type Extra=E;
+    type NonLeafItem=E;
 
-    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>){
+    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
         let (a,rest)=self.inner.next();
         
         match rest{
-            Some((extra,left,right))=>{
+            Some((NonLeafItem,left,right))=>{
 
-                let (res,extra)=(self.func)(a,Some(extra));
+                let (res,NonLeafItem)=(self.func)(a,Some(NonLeafItem));
 
-                let extra=extra.unwrap();
+                let NonLeafItem=NonLeafItem.unwrap();
 
                 let ll=Map{func:self.func.clone(),inner:left};
                 let rr=Map{func:self.func,inner:right};
-                (res,Some((extra,ll,rr)))
+                (res,Some((NonLeafItem,ll,rr)))
             },
             None=>{
-                let (res,extra)=(self.func)(a,None);
-                assert!(extra.is_none());
+                let (res,NonLeafItem)=(self.func)(a,None);
+                assert!(NonLeafItem.is_none());
                 (res,None)
             }
         }
@@ -265,22 +262,22 @@ impl<E,B,C:CTreeIterator,F:Fn(C::Item,Option<C::Extra>)->(B,Option<E>)+Clone> CT
 ///If implemented, then the level_remaining_hint must return the exact height of the tree.
 ///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
 ///so those iterators can implement TrustedLen in this case.
-pub unsafe trait FixedDepthCTreeIterator:CTreeIterator{
+pub unsafe trait FixedDepthVisitor:Visitor{
 }
 
 
 
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
-pub trait CTreeIterator:Sized{
+pub trait Visitor:Sized{
     ///The common item produced for both leafs and non leafs.
     type Item;
-    ///A extra item can be returned for non leafs.
-    type Extra;
+    ///A NonLeafItem item can be returned for non leafs.
+    type NonLeafItem;
 
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
-    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>);
+    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>);
 
     ///Return the levels remaining including the one that will be produced by consuming this iterator.
     ///So if you first made this object from the root for a tree of size 5, it should return 5.
@@ -297,12 +294,12 @@ pub trait CTreeIterator:Sized{
     }
 
     ///Combine two tree visitors.
-    fn zip<F:CTreeIterator>(self,f:F)->Zip<Self,F>{
+    fn zip<F:Visitor>(self,f:F)->Zip<Self,F>{
         Zip{a:self,b:f}
     }
 
     ///Map iterator adapter
-    fn map<B,E,F:Fn(Self::Item,Option<Self::Extra>)->(B,Option<E>)>(self,func:F)->Map<Self,F>{
+    fn map<B,E,F:Fn(Self::Item,Option<Self::NonLeafItem>)->(B,Option<E>)>(self,func:F)->Map<Self,F>{
         Map{func,inner:self}
     }
 
@@ -325,7 +322,7 @@ pub trait CTreeIterator:Sized{
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
-    fn dfs_preorder_iter(self)->DfsPreorderIter<Self>{
+    fn dfs_preorder_iter(self)->DfsPreOrderIter<Self>{
         
         let (levels,max_levels)=self.level_remaining_hint();
         let mut a=Vec::with_capacity(levels);
@@ -335,10 +332,9 @@ pub trait CTreeIterator:Sized{
         
         let min_length=2usize.pow(levels as u32)-1;
         let length=max_levels.map(|levels_max|2usize.pow(levels_max as u32)-1);
-        DfsPreorderIter{a,length,min_length,num:0}
+        DfsPreOrderIter{a,length,min_length,num:0}
     }
 
-    ///TODO optimize use level remianing hint
     fn dfs_inorder_iter(self)->DfsInOrderIter<Self>{
         
         let (levels,max_levels)=self.level_remaining_hint();
@@ -355,14 +351,14 @@ pub trait CTreeIterator:Sized{
 
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
-    fn dfs_preorder(self,mut func:impl FnMut(Self::Item,Option<Self::Extra>)){
-        fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item,Option<C::Extra>)){
+    fn dfs_preorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
+        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
             
             let (nn,rest)=a.next();
             
             match rest{
-                Some((extra,left,right))=>{
-                    func(nn,Some(extra));
+                Some((NonLeafItem,left,right))=>{
+                    func(nn,Some(NonLeafItem));
                     rec(left,func);
                     rec(right,func);
                 },
@@ -377,15 +373,15 @@ pub trait CTreeIterator:Sized{
 
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
-    fn dfs_inorder(self,mut func:impl FnMut(Self::Item,Option<Self::Extra>)){
-        fn rec<C:CTreeIterator>(a:C,func:&mut impl FnMut(C::Item,Option<C::Extra>)){
+    fn dfs_inorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
+        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
             
             let (nn,rest)=a.next();
             
             match rest{
-                Some((extra,left,right))=>{
+                Some((NonLeafItem,left,right))=>{
                     rec(left,func);
-                    func(nn,Some(extra));
+                    func(nn,Some(NonLeafItem));
                     rec(right,func);
                 },
                 None=>{
@@ -399,18 +395,18 @@ pub trait CTreeIterator:Sized{
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
-pub struct Zip<T1:CTreeIterator,T2:CTreeIterator>{
+pub struct Zip<T1:Visitor,T2:Visitor>{
     a:T1,
     b:T2,
 }
 
 
-impl<T1:CTreeIterator,T2:CTreeIterator> CTreeIterator for Zip<T1,T2>{
+impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
     type Item=(T1::Item,T2::Item);
-    type Extra=(T1::Extra,T2::Extra);
+    type NonLeafItem=(T1::NonLeafItem,T2::NonLeafItem);
 
     #[inline(always)]
-    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>){
+    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
         let (a_item,a_rest)=self.a.next();
         let (b_item,b_rest)=self.b.next();
 
@@ -441,21 +437,21 @@ pub struct LevelIter<T>{
     pub depth:Depth
 }
 
-impl<T:CTreeIterator> CTreeIterator for LevelIter<T>{
+impl<T:Visitor> Visitor for LevelIter<T>{
     type Item=(Depth,T::Item);
-    type Extra=T::Extra;
+    type NonLeafItem=T::NonLeafItem;
     #[inline(always)]
-    fn next(self)->(Self::Item,Option<(Self::Extra,Self,Self)>){
+    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
         let LevelIter{inner,depth}=self;
         let (nn,rest)=inner.next();
 
         let r=(depth,nn);
         match rest{
-            Some((extra,left,right))=>{
+            Some((NonLeafItem,left,right))=>{
                 let ln=Depth(depth.0+1);
                 let ll=LevelIter{inner:left,depth:ln};
                 let rr=LevelIter{inner:right,depth:ln};
-                (r,Some((extra,ll,rr)))
+                (r,Some((NonLeafItem,ll,rr)))
             },
             None=>{
                 (r,None)

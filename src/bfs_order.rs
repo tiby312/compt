@@ -7,12 +7,12 @@ pub struct NotCompleteTreeSizeErr;
 
 ///Complete binary tree stored in BFS order.
 ///Height is atleast 1.
-pub struct GenTree<T> {
+pub struct CompleteTree<T> {
     nodes: Vec<T>,
     height: usize,
 }
 
-impl<T> GenTree<T> {
+impl<T> CompleteTree<T> {
     
     #[inline(always)]
     pub fn get_height(&self) -> usize {
@@ -20,16 +20,16 @@ impl<T> GenTree<T> {
     }
 
     #[inline(always)]
-    pub fn from_vec(vec:Vec<T>,height:usize)->Result<GenTree<T>,NotCompleteTreeSizeErr>{
+    pub fn from_vec(vec:Vec<T>,height:usize)->Result<CompleteTree<T>,NotCompleteTreeSizeErr>{
         if 2_usize.pow(height as u32)==vec.len()+1{
-            Ok(GenTree{nodes:vec,height})
+            Ok(CompleteTree{nodes:vec,height})
         }else{
             Err(NotCompleteTreeSizeErr)
         }
     }
 
     ///Create a complete binary tree using the specified node generating function.
-    pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->GenTree<T>{
+    pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->CompleteTree<T>{
         assert!(height>=1);
         let num_nodes=self::compute_num_nodes(height);
 
@@ -37,7 +37,7 @@ impl<T> GenTree<T> {
         for _ in 0..num_nodes{
             vec.push(func())
         }
-        GenTree{
+        CompleteTree{
             nodes:vec,
             height:height,
         }
@@ -46,16 +46,16 @@ impl<T> GenTree<T> {
     
     #[inline(always)]
     ///Create a immutable visitor struct
-    pub fn create_down(&self)->DownT<T>{
-        let k=DownT{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
+    pub fn create_down(&self)->Vistr<T>{
+        let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
         k
     }
     
     #[inline(always)]
     ///Create a mutable visitor struct
-    pub fn create_down_mut(&mut self)->DownTMut<T>{
+    pub fn create_down_mut(&mut self)->VistrMut<T>{
         let base=&mut self.nodes[0] as *mut T;
-        let k=DownTMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
+        let k=VistrMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
         k
     }
 
@@ -69,7 +69,7 @@ impl<T> GenTree<T> {
     #[inline(always)]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self)->Vec<T>{
-        let GenTree{nodes,height:_}=self;
+        let CompleteTree{nodes,height:_}=self;
         nodes
     }
 }
@@ -91,7 +91,7 @@ impl NodeIndex{
 
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
-pub struct DownTMut<'a,T:'a>{
+pub struct VistrMut<'a,T:'a>{
     curr:&'a mut T,
     base:*mut T,
     depth:usize,
@@ -99,19 +99,19 @@ pub struct DownTMut<'a,T:'a>{
 }
 
 
-unsafe impl<'a,T:'a> FixedDepthCTreeIterator for DownTMut<'a,T>{}
+unsafe impl<'a,T:'a> FixedDepthVisitor for VistrMut<'a,T>{}
 
 
-impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
+impl<'a,T:'a> Visitor for VistrMut<'a,T>{
     type Item=&'a mut T;
-    type Extra=();
+    type NonLeafItem=();
 
     #[inline(always)]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
  
         //Unsafely get a mutable reference to this nodeid.
-        //Since at the start there was only one DownTMut that pointed to the root,
-        //there is no danger of two DownTMut's producing a reference to the same node.
+        //Since at the start there was only one VistrMut that pointed to the root,
+        //there is no danger of two VistrMut's producing a reference to the same node.
         if self.depth==self.height-1{
             (self.curr,None)
         }else{
@@ -124,8 +124,8 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
 
             let j=(   
                 (),  
-                DownTMut{curr:left,base:self.base,depth:self.depth+1,height:self.height},
-                DownTMut{curr:right,base:self.base,depth:self.depth+1,height:self.height}
+                VistrMut{curr:left,base:self.base,depth:self.depth+1,height:self.height},
+                VistrMut{curr:right,base:self.base,depth:self.depth+1,height:self.height}
             );
             (self.curr,Some(j))
         }
@@ -140,20 +140,20 @@ impl<'a,T:'a> CTreeIterator for DownTMut<'a,T>{
 
 
 ///Tree visitor that returns a reference to each element in the tree.
-pub struct DownT<'a,T:'a>{
-    remaining:&'a GenTree<T>,
+pub struct Vistr<'a,T:'a>{
+    remaining:&'a CompleteTree<T>,
     nodeid:NodeIndex,
     depth:usize,
     height:usize
 }
 
 
-unsafe impl<'a,T:'a> FixedDepthCTreeIterator for DownT<'a,T>{}
+unsafe impl<'a,T:'a> FixedDepthVisitor for Vistr<'a,T>{}
 
 
-impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
+impl<'a,T:'a> Visitor for Vistr<'a,T>{
     type Item=&'a T;
-    type Extra=();
+    type NonLeafItem=();
     #[inline(always)]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
  
@@ -167,8 +167,8 @@ impl<'a,T:'a> CTreeIterator for DownT<'a,T>{
             
             let j=(     
                 (),
-                DownT{remaining:self.remaining,nodeid:l,height:self.height,depth:self.depth+1},
-                DownT{remaining:self.remaining,nodeid:r,height:self.height,depth:self.depth+1}
+                Vistr{remaining:self.remaining,nodeid:l,height:self.height,depth:self.depth+1},
+                Vistr{remaining:self.remaining,nodeid:r,height:self.height,depth:self.depth+1}
             );
             (a,Some(j))
         }

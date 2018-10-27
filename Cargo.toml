@@ -11,5 +11,4 @@ readme = "readme.md"
 [dependencies]
 
 [dev-dependencies]
-is_sorted = "0.1.0"
 rustc-test = "0.3.0"
