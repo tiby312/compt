@@ -12,7 +12,7 @@ fn main(){
 	// 3   4   5    6
 	let mut k=compt::bfs_order::CompleteTree::from_vec(vec![0,1,2,3,4,5,6],3).unwrap();
 
-	let k=k.create_down_mut();
+	let k=k.vistr_mut();
 	let (a,rest) = k.next();
 	let (_,left,right)=rest.unwrap();
 
