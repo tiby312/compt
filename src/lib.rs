@@ -258,6 +258,9 @@ impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Vi
     }
 }
 
+unsafe impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> FixedDepthVisitor for Map<C,F>{}
+
+
 
 ///If implemented, then the level_remaining_hint must return the exact height of the tree.
 ///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
@@ -423,7 +426,26 @@ impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
             }
         }
     }
+
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        let a=self.a.level_remaining_hint();
+        let b=self.b.level_remaining_hint();
+        let min=a.0.min(b.0);
+
+        let min2=match (a.1,b.1){
+            (Some(a),Some(b))=>{
+                Some(a.min(b))
+            },
+            _=>{
+                None
+            }
+        };
+
+        (min,min2)
+    }
 }
+unsafe impl<T1:FixedDepthVisitor,T2:FixedDepthVisitor> FixedDepthVisitor for Zip<T1,T2>{}
+
 
 
 #[derive(Copy,Clone)]
@@ -458,5 +480,9 @@ impl<T:Visitor> Visitor for LevelIter<T>{
             }
         }
     }
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        self.inner.level_remaining_hint()
+    }
 
 }
+unsafe impl<T:FixedDepthVisitor> FixedDepthVisitor for LevelIter<T>{}
