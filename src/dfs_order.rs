@@ -51,12 +51,12 @@ impl<T> CompleteTree<T>{
         &self.nodes
     }
     #[inline(always)]
-    pub fn create_down(&self)->Vistr<T>{
+    pub fn vistr(&self)->Vistr<T>{
         Vistr{remaining:&self.nodes}
     }
 
     #[inline(always)]
-    pub fn create_down_mut(&mut self)->VistrMut<T>{
+    pub fn vistr_mut(&mut self)->VistrMut<T>{
         VistrMut{remaining:&mut self.nodes}
     }  
 

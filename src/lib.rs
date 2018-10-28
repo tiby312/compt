@@ -84,8 +84,8 @@ impl<C:Visitor>  DfsInOrderIter<C>{
         loop{
             let (i,next) = target.take().unwrap().next();
             match next{
-                Some((NonLeafItem,left,right))=>{
-                    let bleep=(i,Some((NonLeafItem,right)));
+                Some((nl,left,right))=>{
+                    let bleep=(i,Some((nl,right)));
                     stack.push(bleep);
                     target=Some(left);
                 },
@@ -105,11 +105,11 @@ impl<C:Visitor> Iterator for DfsInOrderIter<C>{
     fn next(&mut self)->Option<Self::Item>{
         
         match self.a.pop(){
-            Some((i,NonLeafItem))=>{
-                match NonLeafItem{
-                    Some(NonLeafItem)=>{
-                        let res=(i,Some(NonLeafItem.0));
-                        DfsInOrderIter::add_all_lefts(&mut self.a,NonLeafItem.1);
+            Some((i,nl))=>{
+                match nl{
+                    Some(nl)=>{
+                        let res=(i,Some(nl.0));
+                        DfsInOrderIter::add_all_lefts(&mut self.a,nl.1);
                         self.num+=1;
                         Some(res)
                     },
@@ -158,16 +158,16 @@ impl<C:Visitor> Iterator for DfsPreOrderIter<C>{
         match self.a.pop(){
             Some(x)=>{
                 let (i,next)=x.next();
-                let NonLeafItem=match next{
-                    Some((NonLeafItem,left,right))=>{
+                let nl=match next{
+                    Some((nl,left,right))=>{
                         self.a.push(right);
                         self.a.push(left);
-                        Some(NonLeafItem)
+                        Some(nl)
                     },
                     _=>{None}
                 };
                 self.num+=1;
-                Some((i,NonLeafItem))
+                Some((i,nl))
             },
             None=>{
                 None
@@ -204,17 +204,17 @@ impl<C:Visitor> Iterator for BfsIter<C>{
         match queue.pop_front(){
             Some(e)=>{
                 let (nn,rest)=e.next();
-                let NonLeafItem=match rest{
-                    Some((NonLeafItem,left,right))=>{
+                let nl=match rest{
+                    Some((nl,left,right))=>{
                         queue.push_back(left);
                         queue.push_back(right);
-                        Some(NonLeafItem)
+                        Some(nl)
                     },
                     None=>{
                         None
                     }
                 };
-                Some((nn,NonLeafItem))
+                Some((nn,nl))
             },
             None=>{
                 None
@@ -239,19 +239,19 @@ impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Vi
         let (a,rest)=self.inner.next();
         
         match rest{
-            Some((NonLeafItem,left,right))=>{
+            Some((nl,left,right))=>{
 
-                let (res,NonLeafItem)=(self.func)(a,Some(NonLeafItem));
+                let (res,nl)=(self.func)(a,Some(nl));
 
-                let NonLeafItem=NonLeafItem.unwrap();
+                let nl=nl.unwrap();
 
                 let ll=Map{func:self.func.clone(),inner:left};
                 let rr=Map{func:self.func,inner:right};
-                (res,Some((NonLeafItem,ll,rr)))
+                (res,Some((nl,ll,rr)))
             },
             None=>{
-                let (res,NonLeafItem)=(self.func)(a,None);
-                assert!(NonLeafItem.is_none());
+                let (res,nl)=(self.func)(a,None);
+                assert!(nl.is_none());
                 (res,None)
             }
         }
@@ -357,8 +357,8 @@ pub trait Visitor:Sized{
             let (nn,rest)=a.next();
             
             match rest{
-                Some((NonLeafItem,left,right))=>{
-                    func(nn,Some(NonLeafItem));
+                Some((nl,left,right))=>{
+                    func(nn,Some(nl));
                     rec(left,func);
                     rec(right,func);
                 },
@@ -379,9 +379,9 @@ pub trait Visitor:Sized{
             let (nn,rest)=a.next();
             
             match rest{
-                Some((NonLeafItem,left,right))=>{
+                Some((nl,left,right))=>{
                     rec(left,func);
-                    func(nn,Some(NonLeafItem));
+                    func(nn,Some(nl));
                     rec(right,func);
                 },
                 None=>{
@@ -447,11 +447,11 @@ impl<T:Visitor> Visitor for LevelIter<T>{
 
         let r=(depth,nn);
         match rest{
-            Some((NonLeafItem,left,right))=>{
+            Some((nl,left,right))=>{
                 let ln=Depth(depth.0+1);
                 let ll=LevelIter{inner:left,depth:ln};
                 let rr=LevelIter{inner:right,depth:ln};
-                (r,Some((NonLeafItem,ll,rr)))
+                (r,Some((nl,ll,rr)))
             },
             None=>{
                 (r,None)

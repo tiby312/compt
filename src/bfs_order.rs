@@ -46,14 +46,14 @@ impl<T> CompleteTree<T> {
     
     #[inline(always)]
     ///Create a immutable visitor struct
-    pub fn create_down(&self)->Vistr<T>{
+    pub fn vistr(&self)->Vistr<T>{
         let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
         k
     }
     
     #[inline(always)]
     ///Create a mutable visitor struct
-    pub fn create_down_mut(&mut self)->VistrMut<T>{
+    pub fn vistr_mut(&mut self)->VistrMut<T>{
         let base=&mut self.nodes[0] as *mut T;
         let k=VistrMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
         k
