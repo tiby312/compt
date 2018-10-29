@@ -62,7 +62,7 @@ use std::collections::vec_deque::VecDeque;
 
 
 ///Compute the number of nodes in a complete binary tree based on a height.
-#[inline(always)]
+#[inline]
 pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
 }
@@ -101,7 +101,7 @@ impl<C:Visitor>  DfsInOrderIter<C>{
 
 impl<C:Visitor> Iterator for DfsInOrderIter<C>{
     type Item=(C::Item,Option<C::NonLeafItem>);
-
+    #[inline]
     fn next(&mut self)->Option<Self::Item>{
         
         match self.a.pop(){
@@ -123,7 +123,7 @@ impl<C:Visitor> Iterator for DfsInOrderIter<C>{
             }
         }       
     }
-
+    #[inline]
     fn size_hint(&self)->(usize,Option<usize>){
         (self.min_length-self.num,self.length.map(|a|a-self.num))
     }
@@ -153,7 +153,7 @@ impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for DfsPreOrderIter<C>{}
 
 impl<C:Visitor> Iterator for DfsPreOrderIter<C>{
     type Item=(C::Item,Option<C::NonLeafItem>);
-
+    #[inline]
     fn next(&mut self)->Option<Self::Item>{
         match self.a.pop(){
             Some(x)=>{
@@ -175,6 +175,7 @@ impl<C:Visitor> Iterator for DfsPreOrderIter<C>{
         }
     }
 
+    #[inline]
     fn size_hint(&self)->(usize,Option<usize>){
         (self.min_length-self.num,self.length.map(|a|a-self.num))
     }
@@ -199,6 +200,7 @@ impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for BfsIter<C>{}
 
 impl<C:Visitor> Iterator for BfsIter<C>{
     type Item=(C::Item,Option<C::NonLeafItem>);
+    #[inline]
     fn next(&mut self)->Option<Self::Item>{
         let queue=&mut self.a;
         match queue.pop_front(){
@@ -221,6 +223,7 @@ impl<C:Visitor> Iterator for BfsIter<C>{
             }
         }
     }
+    #[inline]
     fn size_hint(&self)->(usize,Option<usize>){
         (self.min_length-self.num,self.length.map(|a|a-self.num))
     }
@@ -235,6 +238,7 @@ impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Vi
     type Item=B;
     type NonLeafItem=E;
 
+    #[inline]
     fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
         let (a,rest)=self.inner.next();
         
@@ -287,26 +291,31 @@ pub trait Visitor:Sized{
     ///Think of is as height-depth.
     ///This is used to make good allocations when doing dfs and bfs.
     ///Defaults to (0,None)
+    #[inline]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         (0,None)
     }
 
     ///Iterator Adapter to also produce the depth each iteration. 
+    #[inline]
     fn with_depth(self,start_depth:Depth)->LevelIter<Self>{
         LevelIter{inner:self,depth:start_depth}
     }
 
     ///Combine two tree visitors.
+    #[inline]
     fn zip<F:Visitor>(self,f:F)->Zip<Self,F>{
         Zip{a:self,b:f}
     }
 
     ///Map iterator adapter
+    #[inline]
     fn map<B,E,F:Fn(Self::Item,Option<Self::NonLeafItem>)->(B,Option<E>)>(self,func:F)->Map<Self,F>{
         Map{func,inner:self}
     }
 
     ///Provides an iterator that returns each element in bfs order.
+    #[inline]
     fn bfs_iter(self)->BfsIter<Self>{
         let (levels,max_levels)=self.level_remaining_hint();
         
@@ -325,6 +334,7 @@ pub trait Visitor:Sized{
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
+    #[inline]
     fn dfs_preorder_iter(self)->DfsPreOrderIter<Self>{
         
         let (levels,max_levels)=self.level_remaining_hint();
@@ -337,7 +347,7 @@ pub trait Visitor:Sized{
         let length=max_levels.map(|levels_max|2usize.pow(levels_max as u32)-1);
         DfsPreOrderIter{a,length,min_length,num:0}
     }
-
+    #[inline]
     fn dfs_inorder_iter(self)->DfsInOrderIter<Self>{
         
         let (levels,max_levels)=self.level_remaining_hint();
@@ -354,6 +364,7 @@ pub trait Visitor:Sized{
 
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
+    #[inline]
     fn dfs_preorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
         fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
             
@@ -376,6 +387,7 @@ pub trait Visitor:Sized{
 
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
+    #[inline]
     fn dfs_inorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
         fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
             
@@ -408,7 +420,7 @@ impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
     type Item=(T1::Item,T2::Item);
     type NonLeafItem=(T1::NonLeafItem,T2::NonLeafItem);
 
-    #[inline(always)]
+    #[inline]
     fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
         let (a_item,a_rest)=self.a.next();
         let (b_item,b_rest)=self.b.next();
@@ -427,6 +439,7 @@ impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
         }
     }
 
+    #[inline]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         let a=self.a.level_remaining_hint();
         let b=self.b.level_remaining_hint();
@@ -480,6 +493,7 @@ impl<T:Visitor> Visitor for LevelIter<T>{
             }
         }
     }
+    #[inline]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         self.inner.level_remaining_hint()
     }

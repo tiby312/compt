@@ -14,12 +14,12 @@ pub struct CompleteTree<T> {
 
 impl<T> CompleteTree<T> {
     
-    #[inline(always)]
+    #[inline]
     pub fn get_height(&self) -> usize {
         self.height
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn from_vec(vec:Vec<T>,height:usize)->Result<CompleteTree<T>,NotCompleteTreeSizeErr>{
         if 2_usize.pow(height as u32)==vec.len()+1{
             Ok(CompleteTree{nodes:vec,height})
@@ -29,6 +29,7 @@ impl<T> CompleteTree<T> {
     }
 
     ///Create a complete binary tree using the specified node generating function.
+    #[inline]
     pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->CompleteTree<T>{
         assert!(height>=1);
         let num_nodes=self::compute_num_nodes(height);
@@ -44,14 +45,14 @@ impl<T> CompleteTree<T> {
     }
 
     
-    #[inline(always)]
+    #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self)->Vistr<T>{
         let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
         k
     }
     
-    #[inline(always)]
+    #[inline]
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self)->VistrMut<T>{
         let base=&mut self.nodes[0] as *mut T;
@@ -60,13 +61,13 @@ impl<T> CompleteTree<T> {
     }
 
   
-    #[inline(always)]
+    #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn get_nodes(&self)->&[T]{
         &self.nodes
     }
 
-    #[inline(always)]
+    #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self)->Vec<T>{
         let CompleteTree{nodes,height:_}=self;
@@ -82,7 +83,7 @@ impl<T> CompleteTree<T> {
 struct NodeIndex(usize);
 
 impl NodeIndex{
-    #[inline(always)]
+    #[inline]
     fn get_children(self) -> (NodeIndex, NodeIndex) {
         let NodeIndex(a) = self;
         (NodeIndex(2 * a + 1), NodeIndex(2 * a + 2))
@@ -106,7 +107,7 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
     type Item=&'a mut T;
     type NonLeafItem=();
 
-    #[inline(always)]
+    #[inline]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
  
         //Unsafely get a mutable reference to this nodeid.
@@ -130,7 +131,7 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
             (self.curr,Some(j))
         }
     }
-    #[inline(always)]
+    #[inline]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         let diff=self.height-self.depth;
         (diff,Some(diff))
@@ -154,7 +155,7 @@ unsafe impl<'a,T:'a> FixedDepthVisitor for Vistr<'a,T>{}
 impl<'a,T:'a> Visitor for Vistr<'a,T>{
     type Item=&'a T;
     type NonLeafItem=();
-    #[inline(always)]
+    #[inline]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
  
         let a=&self.remaining.nodes[self.nodeid.0];
@@ -173,7 +174,7 @@ impl<'a,T:'a> Visitor for Vistr<'a,T>{
             (a,Some(j))
         }
     }
-    #[inline(always)]
+    #[inline]
     fn level_remaining_hint(&self)->(usize,Option<usize>){
         let diff=self.height-self.depth;
         (diff,Some(diff))
