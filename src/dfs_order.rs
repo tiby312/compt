@@ -52,6 +52,12 @@ impl<T> CompleteTree<T>{
     pub fn get_nodes(&self)->&[T]{
         &self.nodes
     }
+
+    #[inline]
+    pub fn get_nodes_mut(&mut self)->&mut [T]{
+        &mut self.nodes
+    }
+
     #[inline]
     pub fn vistr(&self)->Vistr<T>{
         Vistr{remaining:&self.nodes}

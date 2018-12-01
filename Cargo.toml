@@ -11,4 +11,4 @@ readme = "readme.md"
 [dependencies]
 
 [dev-dependencies]
-rustc-test = "0.3.0"
+rustc-test = "0.3.1"

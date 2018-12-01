@@ -67,6 +67,12 @@ impl<T> CompleteTree<T> {
         &self.nodes
     }
 
+
+    #[inline]
+    pub fn get_nodes_mut(&mut self)->&mut [T]{
+        &mut self.nodes
+    }
+    
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self)->Vec<T>{
