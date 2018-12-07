@@ -57,7 +57,6 @@ pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
-
 use std::collections::vec_deque::VecDeque;
 
 
@@ -262,7 +261,7 @@ impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Vi
     }
 }
 
-unsafe impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> FixedDepthVisitor for Map<C,F>{}
+unsafe impl<E,B,C:FixedDepthVisitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> FixedDepthVisitor for Map<C,F>{}
 
 
 
