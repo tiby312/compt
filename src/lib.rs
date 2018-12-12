@@ -51,11 +51,15 @@
 
 #![feature(ptr_offset_from)]
 #![feature(trusted_len)]
+#![feature(ptr_internals)]
 
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
+
+///A complete binary tree stored in a Vec<T> laid out in dfs pre order.
+pub mod dfs_pre_order;
 
 use std::collections::vec_deque::VecDeque;
 
@@ -270,7 +274,6 @@ unsafe impl<E,B,C:FixedDepthVisitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Opt
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthVisitor:Visitor{
 }
-
 
 
 ///The trait this crate revoles around.

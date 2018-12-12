@@ -1,4 +1,5 @@
 use super::*;
+use std::marker::PhantomData;
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
 #[derive(Copy,Clone,Debug)]
@@ -55,8 +56,8 @@ impl<T> CompleteTree<T> {
     #[inline]
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self)->VistrMut<T>{
-        let base=&mut self.nodes[0] as *mut T;
-        let k=VistrMut{curr:&mut self.nodes[0],base,depth:0,height:self.height};
+        let base=std::ptr::Unique::new(self.nodes.as_mut_ptr()).unwrap();
+        let k=VistrMut{current:0,base,depth:0,height:self.height,_p:PhantomData};
         k
     }
 
@@ -99,10 +100,11 @@ impl NodeIndex{
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct VistrMut<'a,T:'a>{
-    curr:&'a mut T,
-    base:*mut T,
+    current:usize,
+    base:std::ptr::Unique<T>,
     depth:usize,
-    height:usize
+    height:usize,
+    _p:PhantomData<&'a mut T>
 }
 
 
@@ -115,26 +117,25 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
 
     #[inline]
     fn next(self)->(Self::Item,Option<((),Self,Self)>){
- 
+        let curr=unsafe{&mut *self.base.as_ptr().add(self.current)};
         //Unsafely get a mutable reference to this nodeid.
         //Since at the start there was only one VistrMut that pointed to the root,
         //there is no danger of two VistrMut's producing a reference to the same node.
         if self.depth==self.height-1{
-            (self.curr,None)
+            (curr,None)
         }else{
-            let (left,right)=unsafe{
-                let diff=(self.curr as *mut T).offset_from(self.base);
-                let left=&mut *(self.base as *mut T).offset(2*diff+1);
-                let right=&mut *(self.base as *mut T).offset(2*diff+2);
+            let (left,right)={
+                let left=2*self.current+1;
+                let right=2*self.current+2;
                 (left,right)
             };
 
             let j=(   
                 (),  
-                VistrMut{curr:left,base:self.base,depth:self.depth+1,height:self.height},
-                VistrMut{curr:right,base:self.base,depth:self.depth+1,height:self.height}
+                VistrMut{current:left,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData},
+                VistrMut{current:right,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData}
             );
-            (self.curr,Some(j))
+            (curr,Some(j))
         }
     }
     #[inline]
