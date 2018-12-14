@@ -1,44 +1,106 @@
 use super::*;
+use std::marker::PhantomData;
+
+///Specified which type of dfs order we want. In order/pre order/post order.
+pub trait DfsOrder{
+    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]);
+}
+
+///Pass this to the tree for In order layout
+pub struct InOrder;
+impl DfsOrder for InOrder{
+    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+        let mid=nodes.len()/2;
+        let (left,rest)=nodes.split_at_mut(mid);
+        let (middle,right)=rest.split_first_mut().unwrap();
+        (middle,left,right)
+    }
+}
+
+
+///Pass this to the tree for pre order layout
+pub struct PreOrder;
+impl DfsOrder for PreOrder{
+    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+        let (middle,rest)=nodes.split_first_mut().unwrap();
+        let mm=rest.len()/2;
+        let (left,right)=rest.split_at_mut(mm);
+        (middle,left,right)
+    }
+}
+
+
+///Pass this to the tree for post order layout
+pub struct PostOrder;
+impl DfsOrder for PostOrder{
+    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+        let (middle,rest)=nodes.split_last_mut().unwrap();
+        let mm=rest.len()/2;
+        let (left,right)=rest.split_at_mut(mm);
+        (middle,left,right)
+    }
+}
+
+
+
 
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
 #[derive(Copy,Clone,Debug)]
 pub struct NotCompleteTreeSizeErr;
 
-///Complete binary tree stored in DFS inorder order.
-///Height is atleast 1.
-pub struct CompleteTree<T>{
-    nodes: Vec<T>,
-    height:usize
+///Container for a dfs order tree. Internally uses a Vec. Derefs to a CompleteTree.
+#[repr(transparent)]
+pub struct CompleteTreeContainer<T,D:DfsOrder>{
+    _p:PhantomData<D>,
+    nodes:Vec<T>
 }
-impl<T> CompleteTree<T>{
-
+impl<T,D:DfsOrder> CompleteTreeContainer<T,D>{
 
     #[inline]
-    pub fn from_vec(vec:Vec<T>,height:usize)->Result<CompleteTree<T>,NotCompleteTreeSizeErr>{
-        assert!(height>0,"Height must be atleast 1");
-        if 2_usize.pow(height as u32)==vec.len()+1{
-            Ok(CompleteTree{nodes:vec,height})
+    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T,D>,NotCompleteTreeSizeErr>{  
+        if (vec.len()+1).is_power_of_two() && vec.len()!=0{
+            Ok(CompleteTreeContainer{_p:PhantomData,nodes:vec})
         }else{
             Err(NotCompleteTreeSizeErr)
         }
     }
 
     #[inline]
-    pub fn get_height(&self) -> usize {
-        self.height
-    }
+    ///Returns the underlying elements as they are, in BFS order.
+    pub fn into_nodes(self)->Vec<T>{
+        self.nodes
+    }   
+}
 
-    ///Create a complete binary tree using the specified node generating function.
-    
+impl<T,D:DfsOrder> std::ops::Deref for CompleteTreeContainer<T,D>{
+    type Target=CompleteTree<T,D>;
+    fn deref(&self)->&CompleteTree<T,D>{
+        unsafe{std::mem::transmute(self.nodes.as_slice())}
+    }
+}
+impl<T,D:DfsOrder> std::ops::DerefMut for CompleteTreeContainer<T,D>{
+
+    fn deref_mut(&mut self)->&mut CompleteTree<T,D>{
+        unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
+    }
+}
+
+
+///Complete binary tree stored in DFS inorder order.
+///Height is atleast 1.
+#[repr(transparent)]
+pub struct CompleteTree<T,D:DfsOrder>{
+    _p:PhantomData<D>,
+    nodes: [T],
+}
+
+impl<T,D:DfsOrder> CompleteTree<T,D>{
+
     #[inline]
-    pub fn from_dfs_inorder<F:FnMut()->T>(mut func:F,height:usize)->CompleteTree<T>{
-        assert!(height>0,"Height must be atleast 1");
-        let num=compute_num_nodes(height);
-        let nodes=(0..num).map(|_|func()).collect();
-        CompleteTree{nodes,height}
+    pub fn get_height(&self)->usize{
+        compute_height(self.nodes.len())
     }
-
     #[inline]
     pub fn dfs_inorder_iter(&self)->std::slice::Iter<T>{
         self.nodes.iter()
@@ -59,39 +121,34 @@ impl<T> CompleteTree<T>{
     }
 
     #[inline]
-    pub fn vistr(&self)->Vistr<T>{
-        Vistr{remaining:&self.nodes}
+    pub fn vistr(&self)->Vistr<T,D>{
+        Vistr{_p:PhantomData,remaining:&self.nodes}
     }
 
     #[inline]
-    pub fn vistr_mut(&mut self)->VistrMut<T>{
-        VistrMut{remaining:&mut self.nodes}
+    pub fn vistr_mut(&mut self)->VistrMut<T,D>{
+        VistrMut{_p:PhantomData,remaining:&mut self.nodes}
     }  
 
-
-    #[inline]
-    ///Returns the underlying elements as they are, in BFS order.
-    pub fn into_nodes(self)->Vec<T>{
-        let CompleteTree{nodes,height:_}=self;
-        nodes
-    }  
+ 
 }
 
 
 
 ///Tree visitor that returns a reference to each element in the tree.
-pub struct Vistr<'a,T:'a>{
+pub struct Vistr<'a,T:'a,D:DfsOrder>{
+    _p:PhantomData<D>,
     remaining:&'a [T],
 }
 
 
-impl<'a,T:'a> Vistr<'a,T>{
+impl<'a,T:'a,D:DfsOrder> Vistr<'a,T,D>{
     #[inline]
-    pub fn create_wrap<'b>(&'b self)->Vistr<'b,T>{
-        Vistr{remaining:self.remaining}
+    pub fn create_wrap<'b>(&'b self)->Vistr<'b,T,D>{
+        Vistr{_p:PhantomData,remaining:self.remaining}
     }
 }
-impl<'a,T:'a> Visitor for Vistr<'a,T>{
+impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
     type Item=&'a T;
     type NonLeafItem=();
     #[inline]
@@ -103,7 +160,7 @@ impl<'a,T:'a> Visitor for Vistr<'a,T>{
             let mid=remaining.len()/2;
             let (left,rest)=remaining.split_at(mid);
             let (middle,right)=rest.split_first().unwrap();
-            (middle,Some(((),Vistr{remaining:left},Vistr{remaining:right})))
+            (middle,Some(((),Vistr{_p:PhantomData,remaining:left},Vistr{_p:PhantomData,remaining:right})))
         }
     }
 
@@ -113,23 +170,25 @@ impl<'a,T:'a> Visitor for Vistr<'a,T>{
         (left,Some(left))
     }
 }
-unsafe impl<'a,T:'a> FixedDepthVisitor for Vistr<'a,T>{}
+unsafe impl<'a,T:'a,D:DfsOrder> FixedDepthVisitor for Vistr<'a,T,D>{}
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
-pub struct VistrMut<'a,T:'a>{
+pub struct VistrMut<'a,T:'a,D:DfsOrder>{
     remaining:&'a mut [T],
+    _p:PhantomData<D>
 }
 
 
-impl<'a,T:'a> VistrMut<'a,T>{
+
+impl<'a,T:'a,D:DfsOrder> VistrMut<'a,T,D>{
     #[inline]
-    pub fn create_wrap_mut<'b>(&'b mut self)->VistrMut<'b,T>{
-        VistrMut{remaining:self.remaining}
+    pub fn create_wrap_mut<'b>(&'b mut self)->VistrMut<'b,T,D>{
+        VistrMut{_p:PhantomData,remaining:self.remaining}
     }
 }
-unsafe impl<'a,T:'a> FixedDepthVisitor for VistrMut<'a,T>{}
+unsafe impl<'a,T:'a,D:DfsOrder> FixedDepthVisitor for VistrMut<'a,T,D>{}
 
-impl<'a,T:'a> Visitor for VistrMut<'a,T>{
+impl<'a,T:'a,D:DfsOrder> Visitor for VistrMut<'a,T,D>{
     type Item=&'a mut T;
     type NonLeafItem=();
     #[inline]
@@ -141,7 +200,7 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
             let mid=remaining.len()/2;
             let (left,rest)=remaining.split_at_mut(mid);
             let (middle,right)=rest.split_first_mut().unwrap();
-            (middle,Some(((),VistrMut{remaining:left},VistrMut{remaining:right})))
+            (middle,Some(((),VistrMut{_p:PhantomData,remaining:left},VistrMut{_p:PhantomData,remaining:right})))
         }
     }
 

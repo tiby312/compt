@@ -6,50 +6,63 @@ use std::marker::PhantomData;
 pub struct NotCompleteTreeSizeErr;
 
 
+///Contains of a Complete tree. Internally uses a Vec.
+pub struct CompleteTreeContainer<T>{
+    nodes:Vec<T>
+}
+impl<T> CompleteTreeContainer<T>{
+
+    #[inline]
+    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T>,NotCompleteTreeSizeErr>{
+        if (vec.len()+1).is_power_of_two() && vec.len()!=0{
+            Ok(CompleteTreeContainer{nodes:vec})
+        }else{
+            Err(NotCompleteTreeSizeErr)
+        }
+    }
+
+
+    #[inline]
+    ///Returns the underlying elements as they are, in BFS order.
+    pub fn into_nodes(self)->Vec<T>{
+        let CompleteTreeContainer{nodes}=self;
+        nodes
+    }
+}
+
+
+impl<T> std::ops::Deref for CompleteTreeContainer<T>{
+    type Target=CompleteTree<T>;
+    fn deref(&self)->&CompleteTree<T>{
+        unsafe{std::mem::transmute(self.nodes.as_slice())}
+    }
+}
+impl<T> std::ops::DerefMut for CompleteTreeContainer<T>{
+    fn deref_mut(&mut self)->&mut CompleteTree<T>{
+        unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
+    }
+}
+
+
 ///Complete binary tree stored in BFS order.
 ///Height is atleast 1.
 pub struct CompleteTree<T> {
-    nodes: Vec<T>,
-    height: usize,
+    nodes: [T],
 }
 
 impl<T> CompleteTree<T> {
     
     #[inline]
     pub fn get_height(&self) -> usize {
-        self.height
+        compute_height(self.nodes.len())
     }
 
-    #[inline]
-    pub fn from_vec(vec:Vec<T>,height:usize)->Result<CompleteTree<T>,NotCompleteTreeSizeErr>{
-        if 2_usize.pow(height as u32)==vec.len()+1{
-            Ok(CompleteTree{nodes:vec,height})
-        }else{
-            Err(NotCompleteTreeSizeErr)
-        }
-    }
-
-    ///Create a complete binary tree using the specified node generating function.
-    #[inline]
-    pub fn from_bfs<F:FnMut()->T>(mut func:F,height:usize)->CompleteTree<T>{
-        assert!(height>=1);
-        let num_nodes=self::compute_num_nodes(height);
-
-        let mut vec=Vec::with_capacity(num_nodes);
-        for _ in 0..num_nodes{
-            vec.push(func())
-        }
-        CompleteTree{
-            nodes:vec,
-            height:height,
-        }
-    }
 
     
     #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self)->Vistr<T>{
-        let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.height};
+        let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()-1};
         k
     }
     
@@ -57,7 +70,7 @@ impl<T> CompleteTree<T> {
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self)->VistrMut<T>{
         let base=std::ptr::Unique::new(self.nodes.as_mut_ptr()).unwrap();
-        let k=VistrMut{current:0,base,depth:0,height:self.height,_p:PhantomData};
+        let k=VistrMut{current:0,base,depth:0,_p:PhantomData,height:self.get_height()-1};
         k
     }
 
@@ -74,12 +87,6 @@ impl<T> CompleteTree<T> {
         &mut self.nodes
     }
     
-    #[inline]
-    ///Returns the underlying elements as they are, in BFS order.
-    pub fn into_nodes(self)->Vec<T>{
-        let CompleteTree{nodes,height:_}=self;
-        nodes
-    }
 }
 
 

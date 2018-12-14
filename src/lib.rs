@@ -58,9 +58,6 @@ pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 pub mod dfs_order;
 
-///A complete binary tree stored in a Vec<T> laid out in dfs pre order.
-pub mod dfs_pre_order;
-
 use std::collections::vec_deque::VecDeque;
 
 
@@ -68,6 +65,11 @@ use std::collections::vec_deque::VecDeque;
 #[inline]
 pub fn compute_num_nodes(height:usize)->usize{
     return (1 << height) - 1;
+}
+
+#[inline]
+pub fn compute_height(num_nodes:usize)->usize{
+    return (num_nodes+1) >> 1
 }
 
 ///Dfs in order iterator. Each call to next() will return the next element
