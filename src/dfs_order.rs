@@ -59,7 +59,7 @@ impl<T,D:DfsOrder> CompleteTreeContainer<T,D>{
 
     #[inline]
     pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T,D>,NotCompleteTreeSizeErr>{  
-        if (vec.len()+1).is_power_of_two() && vec.len()!=0{
+        if (vec.len()+1).is_power_of_two() && !vec.is_empty(){
             Ok(CompleteTreeContainer{_p:PhantomData,nodes:vec})
         }else{
             Err(NotCompleteTreeSizeErr)
@@ -76,13 +76,16 @@ impl<T,D:DfsOrder> CompleteTreeContainer<T,D>{
 impl<T,D:DfsOrder> std::ops::Deref for CompleteTreeContainer<T,D>{
     type Target=CompleteTree<T,D>;
     fn deref(&self)->&CompleteTree<T,D>{
-        unsafe{std::mem::transmute(self.nodes.as_slice())}
+        unsafe{&*(self.nodes.as_slice() as *const [T] as *const dfs_order::CompleteTree<T, D>)}
+        //unsafe{std::mem::transmute(self.nodes.as_slice())}
     }
 }
 impl<T,D:DfsOrder> std::ops::DerefMut for CompleteTreeContainer<T,D>{
 
     fn deref_mut(&mut self)->&mut CompleteTree<T,D>{
-        unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
+
+        unsafe{&mut *(self.nodes.as_mut_slice() as *mut [T] as *mut dfs_order::CompleteTree<T, D>)}
+        //unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
     }
 }
 
@@ -144,7 +147,7 @@ pub struct Vistr<'a,T:'a,D:DfsOrder>{
 
 impl<'a,T:'a,D:DfsOrder> Vistr<'a,T,D>{
     #[inline]
-    pub fn create_wrap<'b>(&'b self)->Vistr<'b,T,D>{
+    pub fn create_wrap(&self)->Vistr<T,D>{
         Vistr{_p:PhantomData,remaining:self.remaining}
     }
 }
@@ -182,7 +185,7 @@ pub struct VistrMut<'a,T:'a,D:DfsOrder>{
 
 impl<'a,T:'a,D:DfsOrder> VistrMut<'a,T,D>{
     #[inline]
-    pub fn create_wrap_mut<'b>(&'b mut self)->VistrMut<'b,T,D>{
+    pub fn create_wrap_mut(&mut self)->VistrMut<T,D>{
         VistrMut{_p:PhantomData,remaining:self.remaining}
     }
 }

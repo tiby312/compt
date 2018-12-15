@@ -64,12 +64,12 @@ use std::collections::vec_deque::VecDeque;
 ///Compute the number of nodes in a complete binary tree based on a height.
 #[inline]
 pub fn compute_num_nodes(height:usize)->usize{
-    return (1 << height) - 1;
+    (1 << height) - 1
 }
 
 #[inline]
 pub fn compute_height(num_nodes:usize)->usize{
-    return (num_nodes+1) >> 1
+    (num_nodes+1) >> 1
 }
 
 ///Dfs in order iterator. Each call to next() will return the next element

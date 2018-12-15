@@ -14,7 +14,7 @@ impl<T> CompleteTreeContainer<T>{
 
     #[inline]
     pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T>,NotCompleteTreeSizeErr>{
-        if (vec.len()+1).is_power_of_two() && vec.len()!=0{
+        if (vec.len()+1).is_power_of_two() && !vec.is_empty(){
             Ok(CompleteTreeContainer{nodes:vec})
         }else{
             Err(NotCompleteTreeSizeErr)
@@ -34,12 +34,14 @@ impl<T> CompleteTreeContainer<T>{
 impl<T> std::ops::Deref for CompleteTreeContainer<T>{
     type Target=CompleteTree<T>;
     fn deref(&self)->&CompleteTree<T>{
-        unsafe{std::mem::transmute(self.nodes.as_slice())}
+        unsafe{&*(self.nodes.as_slice() as *const [T] as *const bfs_order::CompleteTree<T>)}
+        //unsafe{std::mem::transmute(self.nodes.as_slice())}
     }
 }
 impl<T> std::ops::DerefMut for CompleteTreeContainer<T>{
     fn deref_mut(&mut self)->&mut CompleteTree<T>{
-        unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
+        unsafe{&mut *(self.nodes.as_mut_slice() as *mut [T] as *mut bfs_order::CompleteTree<T>)}
+        //unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
     }
 }
 
@@ -62,16 +64,14 @@ impl<T> CompleteTree<T> {
     #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self)->Vistr<T>{
-        let k=Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()-1};
-        k
+        Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()-1}
     }
     
     #[inline]
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self)->VistrMut<T>{
         let base=std::ptr::Unique::new(self.nodes.as_mut_ptr()).unwrap();
-        let k=VistrMut{current:0,base,depth:0,_p:PhantomData,height:self.get_height()-1};
-        k
+        VistrMut{current:0,base,depth:0,_p:PhantomData,height:self.get_height()-1}
     }
 
   
