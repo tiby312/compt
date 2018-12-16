@@ -77,15 +77,12 @@ impl<T,D:DfsOrder> std::ops::Deref for CompleteTreeContainer<T,D>{
     type Target=CompleteTree<T,D>;
     fn deref(&self)->&CompleteTree<T,D>{
         unsafe{&*(self.nodes.as_slice() as *const [T] as *const dfs_order::CompleteTree<T, D>)}
-        //unsafe{std::mem::transmute(self.nodes.as_slice())}
     }
 }
 impl<T,D:DfsOrder> std::ops::DerefMut for CompleteTreeContainer<T,D>{
 
     fn deref_mut(&mut self)->&mut CompleteTree<T,D>{
-
         unsafe{&mut *(self.nodes.as_mut_slice() as *mut [T] as *mut dfs_order::CompleteTree<T, D>)}
-        //unsafe{std::mem::transmute(self.nodes.as_mut_slice())}
     }
 }
 
