@@ -69,7 +69,7 @@ pub fn compute_num_nodes(height:usize)->usize{
 
 #[inline]
 pub fn compute_height(num_nodes:usize)->usize{
-    (num_nodes+1) >> 1
+    (num_nodes+1).trailing_zeros() as usize
 }
 
 ///Dfs in order iterator. Each call to next() will return the next element
