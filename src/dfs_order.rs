@@ -3,16 +3,24 @@ use std::marker::PhantomData;
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
 pub trait DfsOrder{
-    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]);
+    fn split_mut<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]);
+    fn split<T>(nodes:&[T])->(&T,&[T],&[T]);
+
 }
 
 ///Pass this to the tree for In order layout
 pub struct InOrder;
 impl DfsOrder for InOrder{
-    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+    fn split_mut<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
         let mid=nodes.len()/2;
         let (left,rest)=nodes.split_at_mut(mid);
         let (middle,right)=rest.split_first_mut().unwrap();
+        (middle,left,right)
+    }
+    fn split<T>(nodes:&[T])->(&T,&[T],&[T]){
+        let mid=nodes.len()/2;
+        let (left,rest)=nodes.split_at(mid);
+        let (middle,right)=rest.split_first().unwrap();
         (middle,left,right)
     }
 }
@@ -21,10 +29,16 @@ impl DfsOrder for InOrder{
 ///Pass this to the tree for pre order layout
 pub struct PreOrder;
 impl DfsOrder for PreOrder{
-    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+    fn split_mut<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
         let (middle,rest)=nodes.split_first_mut().unwrap();
         let mm=rest.len()/2;
         let (left,right)=rest.split_at_mut(mm);
+        (middle,left,right)
+    }
+    fn split<T>(nodes:&[T])->(&T,&[T],&[T]){
+        let (middle,rest)=nodes.split_first().unwrap();
+        let mm=rest.len()/2;
+        let (left,right)=rest.split_at(mm);
         (middle,left,right)
     }
 }
@@ -33,10 +47,16 @@ impl DfsOrder for PreOrder{
 ///Pass this to the tree for post order layout
 pub struct PostOrder;
 impl DfsOrder for PostOrder{
-    fn split<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
+    fn split_mut<T>(nodes:&mut [T])->(&mut T,&mut [T],&mut [T]){
         let (middle,rest)=nodes.split_last_mut().unwrap();
         let mm=rest.len()/2;
         let (left,right)=rest.split_at_mut(mm);
+        (middle,left,right)
+    }
+    fn split<T>(nodes:&[T])->(&T,&[T],&[T]){
+        let (middle,rest)=nodes.split_last().unwrap();
+        let mm=rest.len()/2;
+        let (left,right)=rest.split_at(mm);
         (middle,left,right)
     }
 }
@@ -102,12 +122,12 @@ impl<T,D:DfsOrder> CompleteTree<T,D>{
         compute_height(self.nodes.len())
     }
     #[inline]
-    pub fn dfs_inorder_iter(&self)->std::slice::Iter<T>{
+    pub fn dfs_iter(&self)->std::slice::Iter<T>{
         self.nodes.iter()
     }
 
     #[inline]
-    pub fn dfs_inorder_iter_mut(&mut self)->std::slice::IterMut<T>{
+    pub fn dfs_iter_mut(&mut self)->std::slice::IterMut<T>{
         self.nodes.iter_mut()
     }
     #[inline]
@@ -157,9 +177,14 @@ impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
         if remaining.len()==1{
             (&remaining[0],None)
         }else{
+            //TODO make common with comopt DFS ORDER trait
+            let (middle,left,right)=D::split(remaining);
+
+            /* 
             let mid=remaining.len()/2;
             let (left,rest)=remaining.split_at(mid);
             let (middle,right)=rest.split_first().unwrap();
+            */
             (middle,Some(((),Vistr{_p:PhantomData,remaining:left},Vistr{_p:PhantomData,remaining:right})))
         }
     }
@@ -197,9 +222,12 @@ impl<'a,T:'a,D:DfsOrder> Visitor for VistrMut<'a,T,D>{
         if remaining.len()==1{
             (&mut remaining[0],None)
         }else{
+            let (middle,left,right)=D::split_mut(remaining);
+            /*
             let mid=remaining.len()/2;
             let (left,rest)=remaining.split_at_mut(mid);
             let (middle,right)=rest.split_first_mut().unwrap();
+            */
             (middle,Some(((),VistrMut{_p:PhantomData,remaining:left},VistrMut{_p:PhantomData,remaining:right})))
         }
     }
