@@ -144,3 +144,18 @@ fn bfs(){
 	assert_eq!(&res,&[0,1,3,4,2,5,6]);
 }
 
+
+
+/*
+#[test]
+fn test_derefs(){
+	let mut k=compt::bfs_order::CompleteTreeContainer::from_vec(vec![0usize,1,2,3,4,5,6]).unwrap();
+
+	
+	let k:&compt::bfs_order::Vistr<usize>=&k.vistr_mut();
+
+	let ans:Vec<_>=k.dfs_preorder_iter().map(|(a,_)|*a).collect();
+	
+	assert_eq!(ans,&[0usize,1,3,4,2,5,6]);
+}
+*/

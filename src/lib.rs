@@ -69,6 +69,10 @@ pub fn compute_num_nodes(height:usize)->usize{
     (1 << height) - 1
 }
 
+
+///Computes the height for the number of nodes given.
+///Returns the number of trailing zeroes after the last bit in the binary representation.
+///For complete binary trees this would be the height.
 #[inline]
 pub fn compute_height(num_nodes:usize)->usize{
     (num_nodes+1).trailing_zeros() as usize

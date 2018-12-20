@@ -64,7 +64,9 @@ impl<T> CompleteTree<T> {
     #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self)->Vistr<T>{
-        Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()}
+        let base=self.nodes.as_ptr();
+        Vistr{current:0,base,depth:0,_p:PhantomData,height:self.get_height()}
+        //Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()}
     }
     
     #[inline]
@@ -154,6 +156,64 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
 
 
 
+impl<'a,T> std::ops::Deref for VistrMut<'a,T>{
+    type Target=Vistr<'a,T>;
+    fn deref(&self)->&Vistr<'a,T>{
+        unsafe{&*(self as *const VistrMut<T> as *const Vistr<T>)}
+    }
+}
+
+
+
+///Tree visitor that returns a mutable reference to each element in the tree.
+pub struct Vistr<'a,T:'a>{
+    current:usize,
+    base:*const T,
+    depth:usize,
+    height:usize,
+    _p:PhantomData<&'a T>
+}
+
+
+unsafe impl<'a,T:'a> FixedDepthVisitor for Vistr<'a,T>{}
+
+
+impl<'a,T:'a> Visitor for Vistr<'a,T>{
+    type Item=&'a T;
+    type NonLeafItem=();
+
+    #[inline]
+    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+        let curr=unsafe{&*self.base.add(self.current)};
+        //Unsafely get a mutable reference to this nodeid.
+        //Since at the start there was only one VistrMut that pointed to the root,
+        //there is no danger of two VistrMut's producing a reference to the same node.
+        if self.depth==self.height-1{
+            (curr,None)
+        }else{
+            let (left,right)={
+                let left=2*self.current+1;
+                let right=2*self.current+2;
+                (left,right)
+            };
+
+            let j=(   
+                (),  
+                Vistr{current:left,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData},
+                Vistr{current:right,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData}
+            );
+            (curr,Some(j))
+        }
+    }
+    #[inline]
+    fn level_remaining_hint(&self)->(usize,Option<usize>){
+        let diff=self.height-self.depth;
+        (diff,Some(diff))
+    }
+}
+
+
+/*
 ///Tree visitor that returns a reference to each element in the tree.
 pub struct Vistr<'a,T:'a>{
     remaining:&'a CompleteTree<T>,
@@ -194,3 +254,4 @@ impl<'a,T:'a> Visitor for Vistr<'a,T>{
         (diff,Some(diff))
     }
 }
+*/
