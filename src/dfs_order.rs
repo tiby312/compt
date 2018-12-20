@@ -156,6 +156,7 @@ impl<T,D:DfsOrder> CompleteTree<T,D>{
 
 
 ///Tree visitor that returns a reference to each element in the tree.
+#[repr(transparent)]
 pub struct Vistr<'a,T:'a,D:DfsOrder>{
     _p:PhantomData<D>,
     remaining:&'a [T],
@@ -166,6 +167,14 @@ impl<'a,T:'a,D:DfsOrder> Vistr<'a,T,D>{
     #[inline]
     pub fn create_wrap(&self)->Vistr<T,D>{
         Vistr{_p:PhantomData,remaining:self.remaining}
+    }
+
+    pub fn as_slice(&self)->&[T]{
+        self.remaining
+    }
+
+    pub fn into_slice(self)->&'a [T]{
+        self.remaining
     }
 }
 impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
@@ -197,10 +206,21 @@ impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
 }
 unsafe impl<'a,T:'a,D:DfsOrder> FixedDepthVisitor for Vistr<'a,T,D>{}
 
+
+
+impl<'a,T,D:DfsOrder> std::ops::Deref for VistrMut<'a,T,D>{
+    type Target=Vistr<'a,T,D>;
+    fn deref(&self)->&Vistr<'a,T,D>{
+        unsafe{&*(self as *const VistrMut<T,D> as *const Vistr<T, D>)}
+    }
+}
+
+
 ///Tree visitor that returns a mutable reference to each element in the tree.
+#[repr(transparent)]
 pub struct VistrMut<'a,T:'a,D:DfsOrder>{
+    _p:PhantomData<D>,
     remaining:&'a mut [T],
-    _p:PhantomData<D>
 }
 
 
@@ -209,6 +229,15 @@ impl<'a,T:'a,D:DfsOrder> VistrMut<'a,T,D>{
     #[inline]
     pub fn create_wrap_mut(&mut self)->VistrMut<T,D>{
         VistrMut{_p:PhantomData,remaining:self.remaining}
+    }
+
+
+    pub fn as_slice_mut(&mut self)->&mut[T]{
+        self.remaining
+    }
+
+    pub fn into_slice(self)->&'a mut [T]{
+        self.remaining
     }
 }
 unsafe impl<'a,T:'a,D:DfsOrder> FixedDepthVisitor for VistrMut<'a,T,D>{}

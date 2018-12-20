@@ -64,14 +64,14 @@ impl<T> CompleteTree<T> {
     #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self)->Vistr<T>{
-        Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()-1}
+        Vistr{remaining:self,nodeid:NodeIndex(0),depth:0,height:self.get_height()}
     }
     
     #[inline]
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self)->VistrMut<T>{
         let base=std::ptr::Unique::new(self.nodes.as_mut_ptr()).unwrap();
-        VistrMut{current:0,base,depth:0,_p:PhantomData,height:self.get_height()-1}
+        VistrMut{current:0,base,depth:0,_p:PhantomData,height:self.get_height()}
     }
 
   

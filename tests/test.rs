@@ -109,6 +109,11 @@ fn dfs(){
 	let k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::InOrder>::from_vec(vec![0,1,2,3,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
+
+	assert_eq!(k.get_height(),3);
+	
+	assert_eq!(k.vistr().level_remaining_hint().0,3);
+	
 	k.vistr().dfs_preorder(|a,_|{
 		res.push(*a);
 	});
@@ -120,9 +125,19 @@ fn dfs(){
 
 #[test]
 fn bfs(){
+	
+	//    0
+	// 1     2
+	//3  4  5  6
+
 	let k=compt::bfs_order::CompleteTreeContainer::from_vec(vec![0,1,2,3,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
+	
+	assert_eq!(k.get_height(),3);
+	
+	assert_eq!(k.vistr().level_remaining_hint().0,3);
+	
 	k.vistr().dfs_preorder(|a,_|{
 		res.push(*a);
 	});

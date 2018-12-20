@@ -56,6 +56,8 @@
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
+///One advantage of using the dfs order over the bfs order, is that at any point during traversal of the tree,
+///you can turn the visitor into a slice representing the rest of the nodes underneath that visitor.
 pub mod dfs_order;
 
 use std::collections::vec_deque::VecDeque;

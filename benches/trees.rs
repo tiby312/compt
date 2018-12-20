@@ -12,7 +12,7 @@ use compt::*;
 #[bench]
 fn bench_bfs_dfs(bench:&mut Bencher){
 	
-	let mut k=compt::bfs_order::CompleteTree::from_vec(vec![0;16383],14).unwrap();
+	let mut k=compt::bfs_order::CompleteTreeContainer::from_vec(vec![0;16383]).unwrap();
 	bench.iter(||{
 		for (a,_) in k.vistr_mut().dfs_preorder_iter(){
 			*a+=1;
@@ -25,7 +25,7 @@ fn bench_bfs_dfs(bench:&mut Bencher){
 #[bench]
 fn bench_dfs_dfs(bench:&mut Bencher){
 	
-	let mut k=compt::dfs_order::CompleteTree::from_vec(vec![0;16383],14).unwrap();
+	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::PreOrder>::from_vec(vec![0;16383]).unwrap();
 	bench.iter(||{
 		for (a,_) in k.vistr_mut().dfs_preorder_iter(){
 			*a+=1;
@@ -39,7 +39,7 @@ fn bench_dfs_dfs(bench:&mut Bencher){
 #[bench]
 fn bench_bfs_bfs(bench:&mut Bencher){
 	
-	let mut k=compt::bfs_order::CompleteTree::from_vec(vec![0;16383],14).unwrap();
+	let mut k=compt::bfs_order::CompleteTreeContainer::from_vec(vec![0;16383]).unwrap();
 	bench.iter(||{
 		for (a,_) in k.vistr_mut().bfs_iter(){
 			*a+=1;
@@ -52,7 +52,7 @@ fn bench_bfs_bfs(bench:&mut Bencher){
 #[bench]
 fn bench_dfs_bfs(bench:&mut Bencher){
 	
-	let mut k=compt::dfs_order::CompleteTree::from_vec(vec![0;16383],14).unwrap();
+	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::PreOrder>::from_vec(vec![0;16383]).unwrap();
 	bench.iter(||{
 		for (a,_) in k.vistr_mut().bfs_iter(){
 			*a+=1;
