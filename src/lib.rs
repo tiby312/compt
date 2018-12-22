@@ -82,7 +82,7 @@ pub fn compute_height(num_nodes:usize)->usize{
 ///in dfs in order.
 ///Internally uses a Vec for the stack.
 pub struct DfsInOrderIter<C:Visitor>{
-    a:Vec<(C::Item,Option<(C::NonLeafItem,C)>)>,
+    a:Vec<(C::Item,Option<C>)>,
     length:Option<usize>,
     min_length:usize,
     num:usize
@@ -90,13 +90,13 @@ pub struct DfsInOrderIter<C:Visitor>{
 
 impl<C:Visitor>  DfsInOrderIter<C>{
 
-    fn add_all_lefts(stack:&mut Vec<(C::Item,Option<(C::NonLeafItem,C)>)>,node:C){
+    fn add_all_lefts(stack:&mut Vec<(C::Item,Option<C>)>,node:C){
         let mut target=Some(node);
         loop{
             let (i,next) = target.take().unwrap().next();
             match next{
-                Some((nl,left,right))=>{
-                    let bleep=(i,Some((nl,right)));
+                Some([left,right])=>{
+                    let bleep=(i,Some(right));
                     stack.push(bleep);
                     target=Some(left);
                 },
@@ -111,7 +111,7 @@ impl<C:Visitor>  DfsInOrderIter<C>{
 }
 
 impl<C:Visitor> Iterator for DfsInOrderIter<C>{
-    type Item=(C::Item,Option<C::NonLeafItem>);
+    type Item=C::Item;
     #[inline]
     fn next(&mut self)->Option<Self::Item>{
         
@@ -119,13 +119,13 @@ impl<C:Visitor> Iterator for DfsInOrderIter<C>{
             Some((i,nl))=>{
                 match nl{
                     Some(nl)=>{
-                        let res=(i,Some(nl.0));
-                        DfsInOrderIter::add_all_lefts(&mut self.a,nl.1);
+                        let res=i;
+                        DfsInOrderIter::add_all_lefts(&mut self.a,nl);
                         self.num+=1;
                         Some(res)
                     },
                     None=>{
-                        Some((i,None))
+                        Some(i)
                     }
                 }
             },
@@ -163,22 +163,20 @@ unsafe impl<C:FixedDepthVisitor> std::iter::TrustedLen for DfsPreOrderIter<C>{}
 impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for DfsPreOrderIter<C>{}
 
 impl<C:Visitor> Iterator for DfsPreOrderIter<C>{
-    type Item=(C::Item,Option<C::NonLeafItem>);
+    type Item=C::Item;
     #[inline]
     fn next(&mut self)->Option<Self::Item>{
         match self.a.pop(){
             Some(x)=>{
                 let (i,next)=x.next();
-                let nl=match next{
-                    Some((nl,left,right))=>{
-                        self.a.push(right);
-                        self.a.push(left);
-                        Some(nl)
-                    },
-                    _=>{None}
-                };
+                if let Some([left,right])=next{
+                    self.a.push(right);
+                    self.a.push(left);
+                }
+
+                //TODO do this inside let???
                 self.num+=1;
-                Some((i,nl))
+                Some(i)
             },
             None=>{
                 None
@@ -210,24 +208,18 @@ impl<C:FixedDepthVisitor> std::iter::ExactSizeIterator for BfsIter<C>{}
 
 
 impl<C:Visitor> Iterator for BfsIter<C>{
-    type Item=(C::Item,Option<C::NonLeafItem>);
+    type Item=C::Item;
     #[inline]
     fn next(&mut self)->Option<Self::Item>{
         let queue=&mut self.a;
         match queue.pop_front(){
             Some(e)=>{
                 let (nn,rest)=e.next();
-                let nl=match rest{
-                    Some((nl,left,right))=>{
-                        queue.push_back(left);
-                        queue.push_back(right);
-                        Some(nl)
-                    },
-                    None=>{
-                        None
-                    }
-                };
-                Some((nn,nl))
+                if let Some([left,right])=rest{
+                    queue.push_back(left);
+                    queue.push_back(right);        
+                }
+                Some(nn)
             },
             None=>{
                 None
@@ -245,35 +237,29 @@ pub struct Map<C,F>{
     func:F,
     inner:C
 }
-impl<E,B,C:Visitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> Visitor for Map<C,F>{
+impl<B,C:Visitor,F:Fn(C::Item)->B+Clone> Visitor for Map<C,F>{
     type Item=B;
-    type NonLeafItem=E;
 
     #[inline]
-    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let (a,rest)=self.inner.next();
         
+        let k=(self.func)(a);
         match rest{
-            Some((nl,left,right))=>{
-
-                let (res,nl)=(self.func)(a,Some(nl));
-
-                let nl=nl.unwrap();
-
+            Some([left,right])=>{
                 let ll=Map{func:self.func.clone(),inner:left};
                 let rr=Map{func:self.func,inner:right};
-                (res,Some((nl,ll,rr)))
+                (k,Some([ll,rr]))
             },
             None=>{
-                let (res,nl)=(self.func)(a,None);
-                assert!(nl.is_none());
-                (res,None)
+                (k,None)
             }
         }
+        
     }
 }
 
-unsafe impl<E,B,C:FixedDepthVisitor,F:Fn(C::Item,Option<C::NonLeafItem>)->(B,Option<E>)+Clone> FixedDepthVisitor for Map<C,F>{}
+unsafe impl<B,C:FixedDepthVisitor,F:Fn(C::Item)->B+Clone> FixedDepthVisitor for Map<C,F>{}
 
 
 
@@ -285,19 +271,15 @@ pub unsafe trait FixedDepthVisitor:Visitor{
 
 
 
-
-
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
 pub trait Visitor:Sized{
     ///The common item produced for both leafs and non leafs.
     type Item;
-    ///A NonLeafItem item can be returned for non leafs.
-    type NonLeafItem;
 
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
-    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>);
+    fn next(self)->(Self::Item,Option<[Self;2]>);
 
     ///Return the levels remaining including the one that will be produced by consuming this iterator.
     ///So if you first made this object from the root for a tree of size 5, it should return 5.
@@ -323,7 +305,7 @@ pub trait Visitor:Sized{
 
     ///Map iterator adapter
     #[inline]
-    fn map<B,E,F:Fn(Self::Item,Option<Self::NonLeafItem>)->(B,Option<E>)>(self,func:F)->Map<Self,F>{
+    fn map<B,F:Fn(Self::Item)->B>(self,func:F)->Map<Self,F>{
         Map{func,inner:self}
     }
 
@@ -378,19 +360,19 @@ pub trait Visitor:Sized{
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
-    fn dfs_preorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
-        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
+    fn dfs_preorder(self,mut func:impl FnMut(Self::Item)){
+        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item)){
             
             let (nn,rest)=a.next();
             
             match rest{
-                Some((nl,left,right))=>{
-                    func(nn,Some(nl));
+                Some([left,right])=>{
+                    func(nn);
                     rec(left,func);
                     rec(right,func);
                 },
                 None=>{
-                    func(nn,None)
+                    func(nn)
                 }
             }
         }
@@ -401,19 +383,19 @@ pub trait Visitor:Sized{
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
-    fn dfs_inorder(self,mut func:impl FnMut(Self::Item,Option<Self::NonLeafItem>)){
-        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item,Option<C::NonLeafItem>)){
+    fn dfs_inorder(self,mut func:impl FnMut(Self::Item)){
+        fn rec<C:Visitor>(a:C,func:&mut impl FnMut(C::Item)){
             
             let (nn,rest)=a.next();
             
             match rest{
-                Some((nl,left,right))=>{
+                Some([left,right])=>{
                     rec(left,func);
-                    func(nn,Some(nl));
+                    func(nn);
                     rec(right,func);
                 },
                 None=>{
-                    func(nn,None);
+                    func(nn);
                 }
             }
         }
@@ -431,20 +413,23 @@ pub struct Zip<T1:Visitor,T2:Visitor>{
 
 impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
     type Item=(T1::Item,T2::Item);
-    type NonLeafItem=(T1::NonLeafItem,T2::NonLeafItem);
 
     #[inline]
-    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let (a_item,a_rest)=self.a.next();
         let (b_item,b_rest)=self.b.next();
 
         let item=(a_item,b_item);
         match (a_rest,b_rest){
             (Some(a_rest),Some(b_rest))=>{
+                
+                let [aleft,aright]=a_rest;
+                let [bleft,bright]=b_rest;
+
                 //let b_rest=b_rest.unwrap();
-                let f1=Zip{a:a_rest.1,b:b_rest.1};
-                let f2=Zip{a:a_rest.2,b:b_rest.2};
-                (item,Some(((a_rest.0,b_rest.0),f1,f2)))
+                let f1=Zip{a:aleft,b:bleft};
+                let f2=Zip{a:aright,b:bright};
+                (item,Some([f1,f2]))
             },
             _ =>{
                 (item,None)
@@ -487,19 +472,19 @@ pub struct LevelIter<T>{
 
 impl<T:Visitor> Visitor for LevelIter<T>{
     type Item=(Depth,T::Item);
-    type NonLeafItem=T::NonLeafItem;
+
     #[inline(always)]
-    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let LevelIter{inner,depth}=self;
         let (nn,rest)=inner.next();
 
         let r=(depth,nn);
         match rest{
-            Some((nl,left,right))=>{
+            Some([left,right])=>{
                 let ln=Depth(depth.0+1);
                 let ll=LevelIter{inner:left,depth:ln};
                 let rr=LevelIter{inner:right,depth:ln};
-                (r,Some((nl,ll,rr)))
+                (r,Some([ll,rr]))
             },
             None=>{
                 (r,None)

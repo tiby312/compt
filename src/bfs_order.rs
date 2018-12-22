@@ -98,6 +98,7 @@ impl<T> CompleteTree<T> {
 #[derive(Copy,Clone,Debug)]
 struct NodeIndex(usize);
 
+/*
 impl NodeIndex{
     #[inline]
     fn get_children(self) -> (NodeIndex, NodeIndex) {
@@ -105,6 +106,7 @@ impl NodeIndex{
         (NodeIndex(2 * a + 1), NodeIndex(2 * a + 2))
     }
 }
+*/
 
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
@@ -122,10 +124,9 @@ unsafe impl<'a,T:'a> FixedDepthVisitor for VistrMut<'a,T>{}
 
 impl<'a,T:'a> Visitor for VistrMut<'a,T>{
     type Item=&'a mut T;
-    type NonLeafItem=();
-
+    
     #[inline]
-    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let curr=unsafe{&mut *self.base.as_ptr().add(self.current)};
         //Unsafely get a mutable reference to this nodeid.
         //Since at the start there was only one VistrMut that pointed to the root,
@@ -139,11 +140,13 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T>{
                 (left,right)
             };
 
-            let j=(   
-                (),  
+            let j=   
+                
+                [ 
                 VistrMut{current:left,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData},
                 VistrMut{current:right,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData}
-            );
+                ]
+            ;
             (curr,Some(j))
         }
     }
@@ -180,10 +183,9 @@ unsafe impl<'a,T:'a> FixedDepthVisitor for Vistr<'a,T>{}
 
 impl<'a,T:'a> Visitor for Vistr<'a,T>{
     type Item=&'a T;
-    type NonLeafItem=();
 
     #[inline]
-    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let curr=unsafe{&*self.base.add(self.current)};
         //Unsafely get a mutable reference to this nodeid.
         //Since at the start there was only one VistrMut that pointed to the root,
@@ -197,11 +199,13 @@ impl<'a,T:'a> Visitor for Vistr<'a,T>{
                 (left,right)
             };
 
-            let j=(   
-                (),  
+            let j=   
+                
+                [
                 Vistr{current:left,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData},
                 Vistr{current:right,base:self.base,depth:self.depth+1,height:self.height,_p:PhantomData}
-            );
+                ]
+            ;
             (curr,Some(j))
         }
     }

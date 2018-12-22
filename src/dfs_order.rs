@@ -179,9 +179,8 @@ impl<'a,T:'a,D:DfsOrder> Vistr<'a,T,D>{
 }
 impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
     type Item=&'a T;
-    type NonLeafItem=();
     #[inline]
-    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let remaining=self.remaining;
         if remaining.len()==1{
             (&remaining[0],None)
@@ -194,7 +193,7 @@ impl<'a,T:'a,D:DfsOrder> Visitor for Vistr<'a,T,D>{
             let (left,rest)=remaining.split_at(mid);
             let (middle,right)=rest.split_first().unwrap();
             */
-            (middle,Some(((),Vistr{_p:PhantomData,remaining:left},Vistr{_p:PhantomData,remaining:right})))
+            (middle,Some([Vistr{_p:PhantomData,remaining:left},Vistr{_p:PhantomData,remaining:right}]))
         }
     }
 
@@ -244,9 +243,8 @@ unsafe impl<'a,T:'a,D:DfsOrder> FixedDepthVisitor for VistrMut<'a,T,D>{}
 
 impl<'a,T:'a,D:DfsOrder> Visitor for VistrMut<'a,T,D>{
     type Item=&'a mut T;
-    type NonLeafItem=();
     #[inline]
-    fn next(self)->(Self::Item,Option<((),Self,Self)>){
+    fn next(self)->(Self::Item,Option<[Self;2]>){
         let remaining=self.remaining;
         if remaining.len()==1{
             (&mut remaining[0],None)
@@ -257,7 +255,7 @@ impl<'a,T:'a,D:DfsOrder> Visitor for VistrMut<'a,T,D>{
             let (left,rest)=remaining.split_at_mut(mid);
             let (middle,right)=rest.split_first_mut().unwrap();
             */
-            (middle,Some(((),VistrMut{_p:PhantomData,remaining:left},VistrMut{_p:PhantomData,remaining:right})))
+            (middle,Some([VistrMut{_p:PhantomData,remaining:left},VistrMut{_p:PhantomData,remaining:right}]))
         }
     }
 
