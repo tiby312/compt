@@ -54,6 +54,27 @@ pub struct CompleteTree<T> {
 
 impl<T> CompleteTree<T> {
     
+
+    #[inline]
+    pub fn from_slice(arr:&[T])->Result<&CompleteTree<T>,NotCompleteTreeSizeErr>{
+        unimplemented!()
+    }
+
+    #[inline]
+    pub fn from_slice_unchecked(arr:&[T])->&CompleteTree<T>{
+        unimplemented!();
+    }
+
+    #[inline]
+    pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T>,NotCompleteTreeSizeErr>{
+        unimplemented!()
+    }
+
+    #[inline]
+    pub fn from_slice_mut_unchecked(arr:&mut [T])->&mut CompleteTree<T>{
+        unimplemented!();
+    }
+
     #[inline]
     pub fn get_height(&self) -> usize {
         compute_height(self.nodes.len())

@@ -118,6 +118,27 @@ pub struct CompleteTree<T,D:DfsOrder>{
 impl<T,D:DfsOrder> CompleteTree<T,D>{
 
     #[inline]
+    pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,D>,NotCompleteTreeSizeErr>{
+        unimplemented!()
+    }
+
+    #[inline]
+    pub fn from_slice_unchecked(arr:&[T])->&CompleteTree<T,D>{
+        unimplemented!();
+    }
+
+    #[inline]
+    pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,D>,NotCompleteTreeSizeErr>{
+        unimplemented!()
+    }
+
+    #[inline]
+    pub fn from_slice_mut_unchecked(arr:&mut [T])->&mut CompleteTree<T,D>{
+        unimplemented!();
+    }
+
+
+    #[inline]
     pub fn get_height(&self)->usize{
         compute_height(self.nodes.len())
     }

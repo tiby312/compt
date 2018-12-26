@@ -48,6 +48,10 @@
 //! While in bfs order, the root's children are literally right next to it, the children of nodes in the the second
 //! to last level of the tree could be extremly far apart (possibly n/2 elements away!).
 //! With dfs order, as you go down the tree, you gain better and better locality.
+//!
+//! TODO a downside with dfs ordering is that if not all space is used by the leaf nodes, 
+//! Then that wasted space is interspered throughout the entire data structure. In a bfs ordering,
+//! All the leaves are at the end of the data structure, so the penalty may not be as high.
 
 #![feature(ptr_offset_from)]
 #![feature(trusted_len)]
