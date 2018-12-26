@@ -470,10 +470,25 @@ pub struct Depth(pub usize);
 
 ///A wrapper iterator that will additionally return the depth of each element.
 pub struct LevelIter<T>{
-    pub inner:T,
-    pub depth:Depth
+    inner:T,
+    depth:Depth
 }
+impl<T> LevelIter<T>{
+    pub fn depth(&self)->usize{
+        self.depth.0
+    }
 
+    pub fn into_inner(self)->T{
+        self.inner
+    }
+
+    pub fn as_inner(&self)->&T{
+        &self.inner
+    }
+    pub fn as_inner_mut(&mut self)->&mut T{
+        &mut self.inner
+    }
+}
 impl<T:Visitor> Visitor for LevelIter<T>{
     type Item=(Depth,T::Item);
 
