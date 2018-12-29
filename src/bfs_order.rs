@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 pub struct NotCompleteTreeSizeErr;
 
 
+
 ///Contains of a Complete tree. Internally uses a Vec.
 pub struct CompleteTreeContainer<T>{
     nodes:Vec<T>
@@ -14,7 +15,7 @@ impl<T> CompleteTreeContainer<T>{
 
     #[inline]
     pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T>,NotCompleteTreeSizeErr>{
-        if (vec.len()+1).is_power_of_two() && !vec.is_empty(){
+        if valid_node_num(vec.len()){
             Ok(CompleteTreeContainer{nodes:vec})
         }else{
             Err(NotCompleteTreeSizeErr)
@@ -57,23 +58,25 @@ impl<T> CompleteTree<T> {
 
     #[inline]
     pub fn from_slice(arr:&[T])->Result<&CompleteTree<T>,NotCompleteTreeSizeErr>{
-        unimplemented!()
+        if valid_node_num(arr.len()){
+            let tree=unsafe{&*(arr as *const [T] as *const bfs_order::CompleteTree<T>)};
+            Ok(tree)
+        }else{
+            Err(NotCompleteTreeSizeErr)
+        }
     }
 
-    #[inline]
-    pub fn from_slice_unchecked(arr:&[T])->&CompleteTree<T>{
-        unimplemented!();
-    }
 
     #[inline]
     pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T>,NotCompleteTreeSizeErr>{
-        unimplemented!()
+        if valid_node_num(arr.len()){
+            let tree=unsafe{&mut *(arr as *mut [T] as *mut bfs_order::CompleteTree<T>)};
+            Ok(tree)
+        }else{
+            Err(NotCompleteTreeSizeErr)
+        }
     }
 
-    #[inline]
-    pub fn from_slice_mut_unchecked(arr:&mut [T])->&mut CompleteTree<T>{
-        unimplemented!();
-    }
 
     #[inline]
     pub fn get_height(&self) -> usize {

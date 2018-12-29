@@ -119,22 +119,23 @@ impl<T,D:DfsOrder> CompleteTree<T,D>{
 
     #[inline]
     pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,D>,NotCompleteTreeSizeErr>{
-        unimplemented!()
+        if valid_node_num(arr.len()){
+            let tree=unsafe{&*(arr as *const [T] as *const dfs_order::CompleteTree<T,D>)};
+            Ok(tree)
+        }else{
+            Err(NotCompleteTreeSizeErr)
+        }
     }
 
-    #[inline]
-    pub fn from_slice_unchecked(arr:&[T])->&CompleteTree<T,D>{
-        unimplemented!();
-    }
 
     #[inline]
     pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,D>,NotCompleteTreeSizeErr>{
-        unimplemented!()
-    }
-
-    #[inline]
-    pub fn from_slice_mut_unchecked(arr:&mut [T])->&mut CompleteTree<T,D>{
-        unimplemented!();
+        if valid_node_num(arr.len()){
+            let tree=unsafe{&mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T,D>)};
+            Ok(tree)
+        }else{
+            Err(NotCompleteTreeSizeErr)
+        }
     }
 
 

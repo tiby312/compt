@@ -74,6 +74,11 @@ pub fn compute_num_nodes(height:usize)->usize{
 }
 
 
+#[must_use]
+fn valid_node_num(num:usize)->bool{
+    (num+1).is_power_of_two() && num!=0
+}
+
 ///Computes the height for the number of nodes given.
 ///Returns the number of trailing zeroes after the last bit in the binary representation.
 ///For complete binary trees this would be the height.
@@ -414,7 +419,18 @@ pub struct Zip<T1:Visitor,T2:Visitor>{
     b:T2,
 }
 
-
+impl<T1:Visitor,T2:Visitor> Zip<T1,T2>{
+    pub fn into_inner(self)->(T1,T2){
+        let Zip{a,b}=self;
+        (a,b)
+    }
+    pub fn as_inner(&self)->(&T1,&T2){
+        (&self.a,&self.b)
+    }
+    pub fn as_inner_mut(&mut self)->(&mut T1,&mut T2){
+        (&mut self.a,&mut self.b)
+    }
+}
 impl<T1:Visitor,T2:Visitor> Visitor for Zip<T1,T2>{
     type Item=(T1::Item,T2::Item);
 
