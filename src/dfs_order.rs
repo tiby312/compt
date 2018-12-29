@@ -280,7 +280,7 @@ impl<'a, T: 'a, D: DfsOrder> Visitor for VistrMut<'a, T, D> {
             (&mut remaining[0], None)
         } else {
             let (middle, left, right) = D::split_mut(remaining);
-            
+
             (
                 middle,
                 Some([

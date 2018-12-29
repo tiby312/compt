@@ -114,7 +114,6 @@ impl<T> CompleteTree<T> {
 #[derive(Copy, Clone, Debug)]
 struct NodeIndex(usize);
 
-
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct VistrMut<'a, T: 'a> {
     current: usize,

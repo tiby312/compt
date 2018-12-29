@@ -335,7 +335,7 @@ pub trait Visitor: Sized {
     fn dfs_preorder_iter(self) -> DfsPreOrderIter<Self> {
         let (levels, max_levels) = self.level_remaining_hint();
         let mut a = Vec::with_capacity(levels);
-        
+
         a.push(self);
 
         let min_length = 2usize.pow(levels as u32) - 1;
