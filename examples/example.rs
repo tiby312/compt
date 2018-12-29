@@ -14,16 +14,16 @@ fn main(){
 
 	let k=k.vistr_mut();
 	let (a,rest) = k.next();
-	let (_,left,right)=rest.unwrap();
+	let [left,right]=rest.unwrap();
 
 	let mut res:Vec<&mut usize>=Vec::new();
 	res.push(a);
 	
-	left.dfs_inorder(|a,_|{
+	left.dfs_inorder(|a|{
 		res.push(a);
 	});
 
-	for (a,_) in right.bfs_iter(){
+	for a in right.bfs_iter(){
 		res.push(a);
 	}
 

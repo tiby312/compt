@@ -45,7 +45,7 @@ fn dfs_mut(){
 	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::InOrder>::from_vec(vec![0,1,2,3,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
-	for (a,_) in k.vistr_mut().dfs_preorder_iter(){
+	for a in k.vistr_mut().dfs_preorder_iter(){
 		res.push(*a);
 	}
 	assert_eq!(&res,&[3,1,0,2,5,4,6]);
@@ -58,7 +58,7 @@ fn dfs_inorder_mut(){
 	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::InOrder>::from_vec(vec![3,1,2,0,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
-	for (a,_) in k.vistr_mut().dfs_inorder_iter(){
+	for a in k.vistr_mut().dfs_inorder_iter(){
 		res.push(*a);
 	}
 	assert_eq!(&res,&[3,1,2,0,4,5,6]);
@@ -70,7 +70,7 @@ fn dfs_inorder_mut_backwards(){
 	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::InOrder>::from_vec(vec![3,1,2,0,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
-	for (a,_) in k.vistr_mut().dfs_inorder_iter().collect::<Vec<_>>().iter_mut().rev(){
+	for a in k.vistr_mut().dfs_inorder_iter().collect::<Vec<_>>().iter_mut().rev(){
 		res.push(*(*a));
 	}
 	assert_eq!(&res,&[6,5,4,0,2,1,3]);
@@ -83,7 +83,7 @@ fn dfs_inorder2_mut(){
 	let mut k=compt::dfs_order::CompleteTreeContainer::<_,compt::dfs_order::InOrder>::from_vec(vec![3,1,2,0,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
-	k.vistr_mut().dfs_inorder(|a,_|res.push(*a));
+	k.vistr_mut().dfs_inorder(|a|res.push(*a));
 
 
 	assert_eq!(&res,&[3,1,2,0,4,5,6]);
@@ -98,7 +98,7 @@ fn bfs_mut(){
 	let mut k=compt::bfs_order::CompleteTreeContainer::from_vec(vec![0,1,2,3,4,5,6]).unwrap();
 
 	let mut res=Vec::new();
-	k.vistr_mut().dfs_preorder(|a,_|{
+	k.vistr_mut().dfs_preorder(|a|{
 		res.push(*a);
 	});
 	assert_eq!(&res,&[0,1,3,4,2,5,6]);
@@ -114,7 +114,7 @@ fn dfs(){
 	
 	assert_eq!(k.vistr().level_remaining_hint().0,3);
 	
-	k.vistr().dfs_preorder(|a,_|{
+	k.vistr().dfs_preorder(|a|{
 		res.push(*a);
 	});
 	assert_eq!(&res,&[3,1,0,2,5,4,6]);
@@ -138,7 +138,7 @@ fn bfs(){
 	
 	assert_eq!(k.vistr().level_remaining_hint().0,3);
 	
-	k.vistr().dfs_preorder(|a,_|{
+	k.vistr().dfs_preorder(|a|{
 		res.push(*a);
 	});
 	assert_eq!(&res,&[0,1,3,4,2,5,6]);
