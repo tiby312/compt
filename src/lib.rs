@@ -49,9 +49,10 @@
 //! to last level of the tree could be extremly far apart (possibly n/2 elements away!).
 //! With dfs order, as you go down the tree, you gain better and better locality.
 //!
-//! TODO a downside with dfs ordering is that if not all space is used by the leaf nodes,
+//! A downside with dfs ordering is that if not all space is used by the leaf nodes,
 //! Then that wasted space is interspered throughout the entire data structure. In a bfs ordering,
-//! All the leaves are at the end of the data structure, so the penalty may not be as high.
+//! All the leaves are at the end of the data structure, so the memory locality penalty may not be as high
+//! When traversing tree.
 
 #![feature(ptr_offset_from)]
 #![feature(trusted_len)]
@@ -172,8 +173,6 @@ impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
                     self.a.push(right);
                     self.a.push(left);
                 }
-
-                //TODO do this inside let???
                 self.num += 1;
                 Some(i)
             }
@@ -336,8 +335,7 @@ pub trait Visitor: Sized {
     fn dfs_preorder_iter(self) -> DfsPreOrderIter<Self> {
         let (levels, max_levels) = self.level_remaining_hint();
         let mut a = Vec::with_capacity(levels);
-        //let level_hint=self.level_remaining_hint();
-
+        
         a.push(self);
 
         let min_length = 2usize.pow(levels as u32) - 1;
