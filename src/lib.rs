@@ -370,42 +370,65 @@ pub trait Visitor: Sized {
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_preorder(self, mut func: impl FnMut(Self::Item)) {
-        fn rec<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
-            let (nn, rest) = a.next();
-
-            match rest {
-                Some([left, right]) => {
-                    func(nn);
-                    rec(left, func);
-                    rec(right, func);
-                }
-                None => func(nn),
-            }
-        }
-        rec(self, &mut func);
+        rec_pre(self, &mut func);
     }
 
     ///Calls the closure in dfs preorder (left,right,root).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_inorder(self, mut func: impl FnMut(Self::Item)) {
-        fn rec<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
-            let (nn, rest) = a.next();
+        rec_inorder(self, &mut func);
+    }
 
-            match rest {
-                Some([left, right]) => {
-                    rec(left, func);
-                    func(nn);
-                    rec(right, func);
-                }
-                None => {
-                    func(nn);
-                }
-            }
-        }
-        rec(self, &mut func);
+    ///Calls the closure in dfs preorder (left,right,root).
+    ///Takes advantage of the callstack to do dfs.
+    #[inline]
+    fn dfs_postorder(self, mut func: impl FnMut(Self::Item)) {
+        rec_post(self, &mut func);
     }
 }
+
+fn rec_pre<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
+    let (nn, rest) = a.next();
+
+    match rest {
+        Some([left, right]) => {
+            func(nn);
+            rec_pre(left, func);
+            rec_pre(right, func);
+        }
+        None => func(nn),
+    }
+}
+fn rec_inorder<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
+    let (nn, rest) = a.next();
+
+    match rest {
+        Some([left, right]) => {
+            rec_inorder(left, func);
+            func(nn);
+            rec_inorder(right, func);
+        }
+        None => {
+            func(nn);
+        }
+    }
+}
+fn rec_post<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
+    let (nn, rest) = a.next();
+
+    match rest {
+        Some([left, right]) => {
+            rec_post(left, func);
+            rec_post(right, func);
+            func(nn);
+        }
+        None => {
+            func(nn);
+        }
+    }
+}
+
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
