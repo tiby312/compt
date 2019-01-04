@@ -57,6 +57,7 @@
 #![feature(ptr_offset_from)]
 #![feature(trusted_len)]
 #![feature(ptr_internals)]
+#![feature(specialization)]
 
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
@@ -266,11 +267,13 @@ unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisi
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthVisitor: Visitor {}
 
+
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
 pub trait Visitor: Sized {
     ///The common item produced for both leafs and non leafs.
     type Item;
+
 
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
@@ -328,6 +331,7 @@ pub trait Visitor: Sized {
             num: 0,
         }
     }
+
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
