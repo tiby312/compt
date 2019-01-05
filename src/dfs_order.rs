@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
-pub trait DfsOrder {
+trait DfsOrder {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]);
     fn split<T>(nodes: &[T]) -> (&T, &[T], &[T]);
 }
@@ -74,9 +74,39 @@ pub struct CompleteTreeContainer<T, D> {
     nodes: Vec<T>,
 }
 
-impl<T, D:DfsOrder> CompleteTreeContainer<T, D> {
+
+impl<T> CompleteTreeContainer<T,PreOrder>{
     #[inline]
-    pub fn from_vec(vec: Vec<T>,_order:D) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
+    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, PreOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec,PreOrder)
+    }
+}
+
+impl<T> CompleteTreeContainer<T,InOrder>{
+    #[inline]
+    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, InOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec,InOrder)
+    }
+}
+
+impl<T> CompleteTreeContainer<T,PostOrder>{
+    #[inline]
+    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, PostOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec,PostOrder)
+    }
+}
+
+impl<T,D> CompleteTreeContainer<T,D>{
+    #[inline]
+    ///Returns the underlying elements as they are, in BFS order.
+    pub fn into_nodes(self) -> Vec<T> {
+        self.nodes
+    }
+}
+
+impl<T, D> CompleteTreeContainer<T, D> {
+    #[inline]
+    fn from_vec_inner(vec: Vec<T>,_order:D) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
         if (vec.len() + 1).is_power_of_two() && !vec.is_empty() {
             Ok(CompleteTreeContainer {
                 _p: PhantomData,
@@ -87,14 +117,8 @@ impl<T, D:DfsOrder> CompleteTreeContainer<T, D> {
         }
     }
 
-}
-impl<T,D> CompleteTreeContainer<T,D>{
+    
 
-    #[inline]
-    ///Returns the underlying elements as they are, in BFS order.
-    pub fn into_nodes(self) -> Vec<T> {
-        self.nodes
-    }    
 }
 
 
@@ -123,49 +147,49 @@ pub struct CompleteTree<T, D> {
     nodes: [T],
 }
 
-/*
+
 impl<T> CompleteTree<T,PreOrder>{
     #[inline]
     pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner(arr,PreOrder)
+        CompleteTree::from_slice_inner(arr,PreOrder)
     }
 }
 impl<T> CompleteTree<T,InOrder>{
     #[inline]
     pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner(arr,InOrder)
+        CompleteTree::from_slice_inner(arr,InOrder)
     }
 }
 impl<T> CompleteTree<T,PostOrder>{
     #[inline]
     pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner(arr,PostOrder)
+        CompleteTree::from_slice_inner(arr,PostOrder)
     }
 }
 
 impl<T> CompleteTree<T,PreOrder>{
     #[inline]
     pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner_mut(arr,PreOrder)
+        CompleteTree::from_slice_inner_mut(arr,PreOrder)
     }
 }
 impl<T> CompleteTree<T,InOrder>{
     #[inline]
     pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner_mut(arr,InOrder)
+        CompleteTree::from_slice_inner_mut(arr,InOrder)
     }
 }
 impl<T> CompleteTree<T,PostOrder>{
     #[inline]
     pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
-        from_slice_inner(arr,PostOrder)
+        CompleteTree::from_slice_inner_mut(arr,PostOrder)
     }
 }
-*/
+
 
 impl<T, D> CompleteTree<T, D> {
     #[inline]
-    pub fn from_slice(arr: &[T],_order:D) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
+    fn from_slice_inner(arr: &[T],_order:D) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
         if valid_node_num(arr.len()) {
             let tree = unsafe { &*(arr as *const [T] as *const dfs_order::CompleteTree<T, D>) };
             Ok(tree)
@@ -175,8 +199,8 @@ impl<T, D> CompleteTree<T, D> {
     }
 
     #[inline]
-    pub fn from_slice_mut(
-        arr: &mut [T],
+    fn from_slice_inner_mut(
+        arr: &mut [T],_order:D
     ) -> Result<&mut CompleteTree<T, D>, NotCompleteTreeSizeErr> {
         if valid_node_num(arr.len()) {
             let tree = unsafe { &mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T, D>) };

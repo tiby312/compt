@@ -19,8 +19,8 @@ fn assert_length<I: std::iter::TrustedLen>(it: I) {
 fn test_length() {
     {
         let mut k =
-            compt::dfs_order::CompleteTreeContainer::from_vec(
-                vec![0, 1, 2, 3, 4, 5, 6],InOrder
+            compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(
+                vec![0, 1, 2, 3, 4, 5, 6]
             )
             .unwrap();
 
@@ -49,9 +49,9 @@ fn test_length() {
 #[test]
 fn dfs_mut() {
     let mut k =
-        compt::dfs_order::CompleteTreeContainer::from_vec(vec![
+        compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(vec![
             0, 1, 2, 3, 4, 5, 6,
-        ],InOrder)
+        ])
         .unwrap();
 
     let mut res = Vec::new();
@@ -64,9 +64,9 @@ fn dfs_mut() {
 #[test]
 fn dfs_inorder_mut() {
     let mut k =
-        compt::dfs_order::CompleteTreeContainer::from_vec(vec![
+        compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(vec![
             3, 1, 2, 0, 4, 5, 6,
-        ],InOrder)
+        ])
         .unwrap();
 
     let mut res = Vec::new();
@@ -79,9 +79,9 @@ fn dfs_inorder_mut() {
 #[test]
 fn dfs_inorder_mut_backwards() {
     let mut k =
-        compt::dfs_order::CompleteTreeContainer::from_vec(vec![
+        compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(vec![
             3, 1, 2, 0, 4, 5, 6,
-        ],InOrder)
+        ])
         .unwrap();
 
     let mut res = Vec::new();
@@ -100,9 +100,9 @@ fn dfs_inorder_mut_backwards() {
 #[test]
 fn dfs_inorder2_mut() {
     let mut k =
-        compt::dfs_order::CompleteTreeContainer::from_vec(vec![
+        compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(vec![
             3, 1, 2, 0, 4, 5, 6,
-        ],InOrder)
+        ])
         .unwrap();
 
     let mut res = Vec::new();
@@ -129,9 +129,9 @@ fn bfs_mut() {
 #[test]
 fn dfs() {
     let k =
-        compt::dfs_order::CompleteTreeContainer::from_vec(vec![
+        compt::dfs_order::CompleteTreeContainer::<_,InOrder>::from_vec(vec![
             0, 1, 2, 3, 4, 5, 6,
-        ],InOrder)
+        ])
         .unwrap();
 
     let mut res = Vec::new();
