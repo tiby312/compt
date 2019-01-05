@@ -310,6 +310,7 @@ pub trait Visitor: Sized {
         Map { func, inner: self }
     }
 
+
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
     fn bfs_iter(self) -> BfsIter<Self> {
