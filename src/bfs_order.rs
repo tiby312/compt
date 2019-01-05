@@ -176,6 +176,15 @@ impl<'a, T> std::ops::Deref for VistrMut<'a, T> {
     }
 }
 
+//                    a
+//          b                  b
+//      c        c         c       c
+//    d   d   d    d     d   d   d   d
+//   e e e e e  e e e   e e e e e e e e
+//
+//  a bb cccc dddddddd  
+//
+
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct Vistr<'a, T: 'a> {
     current: usize,
@@ -185,6 +194,8 @@ pub struct Vistr<'a, T: 'a> {
     _p: PhantomData<&'a T>,
 }
 
+unsafe impl<'a,T:Send+'a> Send for Vistr<'a,T>{}
+unsafe impl<'a,T:Sync+'a> Sync for Vistr<'a,T>{}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T> {}
 
 impl<'a, T: 'a> Visitor for Vistr<'a, T> {

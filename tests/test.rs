@@ -5,7 +5,6 @@ extern crate compt;
 extern crate test;
 use compt::*;
 
-use compt::dfs_order::*;
 
 fn assert_length<I: std::iter::TrustedLen>(it: I) {
     assert_eq!(it.size_hint().0, it.size_hint().1.unwrap());

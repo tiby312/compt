@@ -10,14 +10,11 @@
 //!```
 //!pub trait Visitor:Sized{
 //!    type Item;
-//!    type NonLeafItem;
-//!    fn next(self)->(Self::Item,Option<(Self::NonLeafItem,Self,Self)>);
+//!    fn next(self)->(Self::Item,Option<[Self;2]>);
 //!}
 //!```
 //! If you have a visitor, you can call next() on it to consume it, and produce the node it is visiting, plus
-//! the children nodes. Sometimes, non leaf nodes contain additional data that does not apply to leaf nodes. This is
-//! the purpose of the NonLeafItem associated type. Users can choose to define it to be some data that only non leaf nodes provide.
-//! For the two provided implementations, both leafs and nonleafs have the same time, so in those cases we just use the empty type.
+//! the children nodes. 
 //!
 //! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
 //! being able to create the same mutable reference some other way.
@@ -314,6 +311,19 @@ pub trait Visitor: Sized {
         Map { func, inner: self }
     }
 
+    ///Only produce children up to num.
+    #[inline]
+    fn take(self,num:usize)->Take<Self>{
+        Take{a:self,num}
+    }
+
+    ///Flips left and right children.
+    #[inline]
+    fn flip(self)->Flip<Self>{
+        Flip(self)
+    }
+
+
 
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
@@ -437,6 +447,46 @@ fn rec_post<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
         }
     }
 }
+
+
+pub struct Flip<T:Visitor>(T);
+impl<T:Visitor> Visitor for Flip<T>{
+    type Item=T::Item;
+    fn next(self)->(Self::Item,Option<[Self;2]>){
+        let (a,rest)=self.0.next();
+        (a,rest.map(|[l,r]|[Flip(r),Flip(l)]))
+    }
+}
+unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
+
+
+
+pub struct Take<T:Visitor>{
+    a:T,
+    num:usize
+}
+
+impl<T:Visitor> Visitor for Take<T>{
+    type Item=T::Item;
+
+    fn next(self)->(Self::Item,Option<[Self;2]>){
+        let (a,rest)=self.a.next();
+
+        let rest=match rest{
+            Some([left,right])=>{
+                if self.num==0{
+                    None
+                }else{
+                    Some([Take{a:left,num:self.num-1},Take{a:right,num:self.num-1}])
+                }
+            },
+            None=>{
+                None
+            }
+        };
+        (a,rest)
+    }
+} 
 
 
 ///Tree visitor that zips up two seperate visitors.
