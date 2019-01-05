@@ -20,7 +20,7 @@ fn bench_bfs_dfs(bench: &mut Bencher) {
 
 #[bench]
 fn bench_dfs_dfs(bench: &mut Bencher) {
-    let mut k = compt::dfs_order::CompleteTreeContainer::<_, compt::dfs_order::PreOrder>::from_vec(
+    let mut k = compt::dfs_order::CompleteTreeContainer::from_preorder(
         vec![0; 16383],
     )
     .unwrap();
@@ -47,7 +47,7 @@ fn bench_bfs_bfs(bench: &mut Bencher) {
 
 #[bench]
 fn bench_dfs_bfs(bench: &mut Bencher) {
-    let mut k = compt::dfs_order::CompleteTreeContainer::<_, compt::dfs_order::PreOrder>::from_vec(
+    let mut k = compt::dfs_order::CompleteTreeContainer::from_preorder(
         vec![0; 16383],
     )
     .unwrap();

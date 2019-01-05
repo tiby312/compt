@@ -77,21 +77,21 @@ pub struct CompleteTreeContainer<T, D> {
 
 impl<T> CompleteTreeContainer<T,PreOrder>{
     #[inline]
-    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, PreOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_preorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, PreOrder>, NotCompleteTreeSizeErr> {
         CompleteTreeContainer::from_vec_inner(vec,PreOrder)
     }
 }
 
 impl<T> CompleteTreeContainer<T,InOrder>{
     #[inline]
-    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, InOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_inorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, InOrder>, NotCompleteTreeSizeErr> {
         CompleteTreeContainer::from_vec_inner(vec,InOrder)
     }
 }
 
 impl<T> CompleteTreeContainer<T,PostOrder>{
     #[inline]
-    pub fn from_vec(vec:Vec<T>)->Result<CompleteTreeContainer<T, PostOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_postorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, PostOrder>, NotCompleteTreeSizeErr> {
         CompleteTreeContainer::from_vec_inner(vec,PostOrder)
     }
 }
@@ -150,38 +150,38 @@ pub struct CompleteTree<T, D> {
 
 impl<T> CompleteTree<T,PreOrder>{
     #[inline]
-    pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_prder(arr:&[T])->Result<&CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner(arr,PreOrder)
     }
 }
 impl<T> CompleteTree<T,InOrder>{
     #[inline]
-    pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_inorder(arr:&[T])->Result<&CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner(arr,InOrder)
     }
 }
 impl<T> CompleteTree<T,PostOrder>{
     #[inline]
-    pub fn from_slice(arr:&[T])->Result<&CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_postorder(arr:&[T])->Result<&CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner(arr,PostOrder)
     }
 }
 
 impl<T> CompleteTree<T,PreOrder>{
     #[inline]
-    pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_preorder_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner_mut(arr,PreOrder)
     }
 }
 impl<T> CompleteTree<T,InOrder>{
     #[inline]
-    pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_inorder_mut(arr:&mut [T])->Result<&mut CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner_mut(arr,InOrder)
     }
 }
 impl<T> CompleteTree<T,PostOrder>{
     #[inline]
-    pub fn from_slice_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
+    pub fn from_post_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
         CompleteTree::from_slice_inner_mut(arr,PostOrder)
     }
 }
