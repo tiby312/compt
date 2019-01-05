@@ -53,6 +53,10 @@
 //! Then that wasted space is interspered throughout the entire data structure. In a bfs ordering,
 //! All the leaves are at the end of the data structure, so the memory locality penalty may not be as high
 //! When traversing tree.
+//!
+//! For parallel divide and conquere, dfs ordering is likely better than bfs ordering. 
+//! With dfs ordering, once you divide the problem, the memory sections that each task deals with
+//! do not intersect. With bfs ordering the tasks would still be operating on memory sections that interleave
 
 #![feature(ptr_offset_from)]
 #![feature(trusted_len)]
