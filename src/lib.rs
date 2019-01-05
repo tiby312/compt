@@ -449,6 +449,7 @@ fn rec_post<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
 }
 
 
+///Flips left and right children.
 pub struct Flip<T:Visitor>(T);
 impl<T:Visitor> Visitor for Flip<T>{
     type Item=T::Item;
@@ -460,7 +461,7 @@ impl<T:Visitor> Visitor for Flip<T>{
 unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
 
 
-
+///Only returns children up untill level num.
 pub struct Take<T:Visitor>{
     a:T,
     num:usize
