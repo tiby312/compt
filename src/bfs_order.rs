@@ -1,5 +1,4 @@
 use super::*;
-use std::marker::PhantomData;
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
 #[derive(Copy, Clone, Debug)]
@@ -74,26 +73,18 @@ impl<T> CompleteTree<T> {
     #[inline]
     ///Create a immutable visitor struct
     pub fn vistr(&self) -> Vistr<T> {
-        let base = self.nodes.as_ptr();
         Vistr {
             current: 0,
-            base,
-            depth: 0,
-            _p: PhantomData,
-            height: self.get_height(),
+            arr: &self.nodes,
         }
     }
 
     #[inline]
     ///Create a mutable visitor struct
     pub fn vistr_mut(&mut self) -> VistrMut<T> {
-        let base = std::ptr::Unique::new(self.nodes.as_mut_ptr()).unwrap();
         VistrMut {
             current: 0,
-            base,
-            depth: 0,
-            _p: PhantomData,
-            height: self.get_height(),
+            arr: &mut self.nodes,
         }
     }
 
@@ -117,10 +108,7 @@ struct NodeIndex(usize);
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct VistrMut<'a, T: 'a> {
     current: usize,
-    base: std::ptr::Unique<T>,
-    depth: usize,
-    height: usize,
-    _p: PhantomData<&'a mut T>,
+    arr: &'a mut [T],
 }
 
 unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T> {}
@@ -130,11 +118,15 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
 
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        let curr = unsafe { &mut *self.base.as_ptr().add(self.current) };
-        //Unsafely get a mutable reference to this nodeid.
-        //Since at the start there was only one VistrMut that pointed to the root,
-        //there is no danger of two VistrMut's producing a reference to the same node.
-        if self.depth == self.height - 1 {
+        let arr_left =
+            unsafe { std::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
+        let arr_right =
+            unsafe { std::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
+
+        let len = self.arr.len();
+        let curr = &mut self.arr[self.current];
+
+        if self.current >= len / 2 {
             (curr, None)
         } else {
             let (left, right) = {
@@ -146,17 +138,11 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
             let j = [
                 VistrMut {
                     current: left,
-                    base: self.base,
-                    depth: self.depth + 1,
-                    height: self.height,
-                    _p: PhantomData,
+                    arr: arr_left,
                 },
                 VistrMut {
                     current: right,
-                    base: self.base,
-                    depth: self.depth + 1,
-                    height: self.height,
-                    _p: PhantomData,
+                    arr: arr_right,
                 },
             ];
             (curr, Some(j))
@@ -164,7 +150,9 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
     }
     #[inline]
     fn level_remaining_hint(&self) -> (usize, Option<usize>) {
-        let diff = self.height - self.depth;
+        let depth = compute_height(self.current);
+        let height = compute_height(self.arr.len());
+        let diff = height - depth;
         (diff, Some(diff))
     }
 }
@@ -182,20 +170,17 @@ impl<'a, T> std::ops::Deref for VistrMut<'a, T> {
 //    d   d   d    d     d   d   d   d
 //   e e e e e  e e e   e e e e e e e e
 //
-//  a bb cccc dddddddd  
+//  a bb cccc dddddddd
 //
+
+///Tree visitor that returns a mutable reference to each element in the tree.
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct Vistr<'a, T: 'a> {
     current: usize,
-    base: *const T,
-    depth: usize,
-    height: usize,
-    _p: PhantomData<&'a T>,
+    arr: &'a [T],
 }
 
-unsafe impl<'a,T:Send+'a> Send for Vistr<'a,T>{}
-unsafe impl<'a,T:Sync+'a> Sync for Vistr<'a,T>{}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T> {}
 
 impl<'a, T: 'a> Visitor for Vistr<'a, T> {
@@ -203,11 +188,10 @@ impl<'a, T: 'a> Visitor for Vistr<'a, T> {
 
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        let curr = unsafe { &*self.base.add(self.current) };
-        //Unsafely get a mutable reference to this nodeid.
-        //Since at the start there was only one VistrMut that pointed to the root,
-        //there is no danger of two VistrMut's producing a reference to the same node.
-        if self.depth == self.height - 1 {
+        let len = self.arr.len();
+        let curr = &self.arr[self.current];
+
+        if self.current >= len / 2 {
             (curr, None)
         } else {
             let (left, right) = {
@@ -219,17 +203,11 @@ impl<'a, T: 'a> Visitor for Vistr<'a, T> {
             let j = [
                 Vistr {
                     current: left,
-                    base: self.base,
-                    depth: self.depth + 1,
-                    height: self.height,
-                    _p: PhantomData,
+                    arr: self.arr,
                 },
                 Vistr {
                     current: right,
-                    base: self.base,
-                    depth: self.depth + 1,
-                    height: self.height,
-                    _p: PhantomData,
+                    arr: self.arr,
                 },
             ];
             (curr, Some(j))
@@ -237,7 +215,9 @@ impl<'a, T: 'a> Visitor for Vistr<'a, T> {
     }
     #[inline]
     fn level_remaining_hint(&self) -> (usize, Option<usize>) {
-        let diff = self.height - self.depth;
+        let depth = compute_height(self.current);
+        let height = compute_height(self.arr.len());
+        let diff = height - depth;
         (diff, Some(diff))
     }
 }

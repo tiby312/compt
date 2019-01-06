@@ -3,8 +3,6 @@
 //! Some adaptors are also provided that let you map, zip, or optionally also produce the depth on every call to next().
 //! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
 //! One laid out in bfs, and one laid out in dfs in order in memory. Both of these flavors assume that every node in the tree is the same type.
-//! The visitor trait is more flexible than this, however. With the NonLeafItem associated type, users can implement a visitor for
-//! tree data structures that have different types for the nonleafs and leafs.
 //!
 //! This is the trait that this crate revoles around:
 //!```
@@ -13,8 +11,8 @@
 //!    fn next(self)->(Self::Item,Option<[Self;2]>);
 //!}
 //!```
-//! If you have a visitor, you can call next() on it to consume it, and produce the node it is visiting, plus
-//! the children nodes. 
+//! If you have a visitor, you can call next() on it to consume it, and produce a reference to the node it is visiting, plus
+//! the children nodes.
 //!
 //! The fact that the iterator is consumed when calling next(), allows us to return mutable references without fear of the users
 //! being able to create the same mutable reference some other way.
@@ -25,12 +23,10 @@
 //! To provide a useful complete binary tree visitor trait that has some similar features to the Iterator trait,
 //! such as zip(), and map(), and that can be used in parallel divide and conquer style problems.
 //!
-//!
-//!
 //!## Unsafety in the provided two tree implementations
 //!
 //! With a regular Vec, getting one mutable reference to an element will borrow the
-//! entire Vec. However the two provided trees have invariants that let us make guarentees about
+//! entire Vec. However a tree has properties that let us make guarentees about
 //! which elements can be mutably borrowed at the same time. With the bfs tree, the children
 //! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guarenteed that the parent,
 //! and the two children are all distinct elements and so mutable references two all of them can exist at the same time.
@@ -51,14 +47,10 @@
 //! All the leaves are at the end of the data structure, so the memory locality penalty may not be as high
 //! When traversing tree.
 //!
-//! For parallel divide and conquere, dfs ordering is likely better than bfs ordering. 
+//! For parallel divide and conquer, dfs ordering is likely better than bfs ordering.
 //! With dfs ordering, once you divide the problem, the memory sections that each task deals with
 //! do not intersect. With bfs ordering the tasks would still be operating on memory sections that interleave
-
-#![feature(ptr_offset_from)]
-#![feature(trusted_len)]
-#![feature(ptr_internals)]
-#![feature(specialization)]
+//!
 
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
@@ -146,7 +138,7 @@ impl<C: Visitor> Iterator for DfsInOrderIter<C> {
 }
 
 impl<C: Visitor> std::iter::FusedIterator for DfsInOrderIter<C> {}
-unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsInOrderIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsInOrderIter<C> {}
 impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for DfsInOrderIter<C> {}
 
 ///Dfs preorder iterator. Each call to next() will return the next element
@@ -160,8 +152,7 @@ pub struct DfsPreOrderIter<C: Visitor> {
 }
 
 impl<C: Visitor> std::iter::FusedIterator for DfsPreOrderIter<C> {}
-
-unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsPreOrderIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsPreOrderIter<C> {}
 impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
 
 impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
@@ -202,7 +193,7 @@ pub struct BfsIter<C: Visitor> {
 }
 
 impl<C: Visitor> std::iter::FusedIterator for BfsIter<C> {}
-unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for BfsIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for BfsIter<C> {}
 impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for BfsIter<C> {}
 
 impl<C: Visitor> Iterator for BfsIter<C> {
@@ -268,13 +259,11 @@ unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisi
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthVisitor: Visitor {}
 
-
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
 pub trait Visitor: Sized {
     ///The common item produced for both leafs and non leafs.
     type Item;
-
 
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
@@ -313,17 +302,15 @@ pub trait Visitor: Sized {
 
     ///Only produce children up to num.
     #[inline]
-    fn take(self,num:usize)->Take<Self>{
-        Take{a:self,num}
+    fn take(self, num: usize) -> Take<Self> {
+        Take { a: self, num }
     }
 
     ///Flips left and right children.
     #[inline]
-    fn flip(self)->Flip<Self>{
+    fn flip(self) -> Flip<Self> {
         Flip(self)
     }
-
-
 
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
@@ -346,7 +333,6 @@ pub trait Visitor: Sized {
             num: 0,
         }
     }
-
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
@@ -448,47 +434,51 @@ fn rec_post<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
     }
 }
 
-
 ///Flips left and right children.
-pub struct Flip<T:Visitor>(T);
-impl<T:Visitor> Visitor for Flip<T>{
-    type Item=T::Item;
-    fn next(self)->(Self::Item,Option<[Self;2]>){
-        let (a,rest)=self.0.next();
-        (a,rest.map(|[l,r]|[Flip(r),Flip(l)]))
+pub struct Flip<T: Visitor>(T);
+impl<T: Visitor> Visitor for Flip<T> {
+    type Item = T::Item;
+    fn next(self) -> (Self::Item, Option<[Self; 2]>) {
+        let (a, rest) = self.0.next();
+        (a, rest.map(|[l, r]| [Flip(r), Flip(l)]))
     }
 }
 unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
 
-
 ///Only returns children up untill level num.
-pub struct Take<T:Visitor>{
-    a:T,
-    num:usize
+pub struct Take<T: Visitor> {
+    a: T,
+    num: usize,
 }
 
-impl<T:Visitor> Visitor for Take<T>{
-    type Item=T::Item;
+impl<T: Visitor> Visitor for Take<T> {
+    type Item = T::Item;
 
-    fn next(self)->(Self::Item,Option<[Self;2]>){
-        let (a,rest)=self.a.next();
+    fn next(self) -> (Self::Item, Option<[Self; 2]>) {
+        let (a, rest) = self.a.next();
 
-        let rest=match rest{
-            Some([left,right])=>{
-                if self.num==0{
+        let rest = match rest {
+            Some([left, right]) => {
+                if self.num == 0 {
                     None
-                }else{
-                    Some([Take{a:left,num:self.num-1},Take{a:right,num:self.num-1}])
+                } else {
+                    Some([
+                        Take {
+                            a: left,
+                            num: self.num - 1,
+                        },
+                        Take {
+                            a: right,
+                            num: self.num - 1,
+                        },
+                    ])
                 }
-            },
-            None=>{
-                None
             }
+            None => None,
         };
-        (a,rest)
+        (a, rest)
     }
-} 
-
+}
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.

@@ -1,8 +1,6 @@
 use super::*;
 use std::marker::PhantomData;
 
-
-
 ///Specified which type of dfs order we want. In order/pre order/post order.
 trait DfsOrder {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]);
@@ -10,7 +8,7 @@ trait DfsOrder {
 }
 
 ///Pass this to the tree for In order layout
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct InOrder;
 impl DfsOrder for InOrder {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]) {
@@ -28,7 +26,7 @@ impl DfsOrder for InOrder {
 }
 
 ///Pass this to the tree for pre order layout
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PreOrder;
 impl DfsOrder for PreOrder {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]) {
@@ -46,7 +44,7 @@ impl DfsOrder for PreOrder {
 }
 
 ///Pass this to the tree for post order layout
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PostOrder;
 impl DfsOrder for PostOrder {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]) {
@@ -70,33 +68,38 @@ pub struct NotCompleteTreeSizeErr;
 ///Container for a dfs order tree. Internally uses a Vec. Derefs to a CompleteTree.
 #[repr(transparent)]
 pub struct CompleteTreeContainer<T, D> {
-    _p:PhantomData<D>,
+    _p: PhantomData<D>,
     nodes: Vec<T>,
 }
 
-
-impl<T> CompleteTreeContainer<T,PreOrder>{
+impl<T> CompleteTreeContainer<T, PreOrder> {
     #[inline]
-    pub fn from_preorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, PreOrder>, NotCompleteTreeSizeErr> {
-        CompleteTreeContainer::from_vec_inner(vec,PreOrder)
+    pub fn from_preorder(
+        vec: Vec<T>,
+    ) -> Result<CompleteTreeContainer<T, PreOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec, PreOrder)
     }
 }
 
-impl<T> CompleteTreeContainer<T,InOrder>{
+impl<T> CompleteTreeContainer<T, InOrder> {
     #[inline]
-    pub fn from_inorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, InOrder>, NotCompleteTreeSizeErr> {
-        CompleteTreeContainer::from_vec_inner(vec,InOrder)
+    pub fn from_inorder(
+        vec: Vec<T>,
+    ) -> Result<CompleteTreeContainer<T, InOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec, InOrder)
     }
 }
 
-impl<T> CompleteTreeContainer<T,PostOrder>{
+impl<T> CompleteTreeContainer<T, PostOrder> {
     #[inline]
-    pub fn from_postorder(vec:Vec<T>)->Result<CompleteTreeContainer<T, PostOrder>, NotCompleteTreeSizeErr> {
-        CompleteTreeContainer::from_vec_inner(vec,PostOrder)
+    pub fn from_postorder(
+        vec: Vec<T>,
+    ) -> Result<CompleteTreeContainer<T, PostOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeContainer::from_vec_inner(vec, PostOrder)
     }
 }
 
-impl<T,D> CompleteTreeContainer<T,D>{
+impl<T, D> CompleteTreeContainer<T, D> {
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self) -> Vec<T> {
@@ -106,7 +109,10 @@ impl<T,D> CompleteTreeContainer<T,D>{
 
 impl<T, D> CompleteTreeContainer<T, D> {
     #[inline]
-    fn from_vec_inner(vec: Vec<T>,_order:D) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
+    fn from_vec_inner(
+        vec: Vec<T>,
+        _order: D,
+    ) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
         if (vec.len() + 1).is_power_of_two() && !vec.is_empty() {
             Ok(CompleteTreeContainer {
                 _p: PhantomData,
@@ -116,12 +122,7 @@ impl<T, D> CompleteTreeContainer<T, D> {
             Err(NotCompleteTreeSizeErr)
         }
     }
-
-    
-
 }
-
-
 
 impl<T, D> std::ops::Deref for CompleteTreeContainer<T, D> {
     type Target = CompleteTree<T, D>;
@@ -147,49 +148,58 @@ pub struct CompleteTree<T, D> {
     nodes: [T],
 }
 
-
-impl<T> CompleteTree<T,PreOrder>{
+impl<T> CompleteTree<T, PreOrder> {
     #[inline]
-    pub fn from_prder(arr:&[T])->Result<&CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner(arr,PreOrder)
+    pub fn from_prder(arr: &[T]) -> Result<&CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner(arr, PreOrder)
     }
 }
-impl<T> CompleteTree<T,InOrder>{
+impl<T> CompleteTree<T, InOrder> {
     #[inline]
-    pub fn from_inorder(arr:&[T])->Result<&CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner(arr,InOrder)
+    pub fn from_inorder(arr: &[T]) -> Result<&CompleteTree<T, InOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner(arr, InOrder)
     }
 }
-impl<T> CompleteTree<T,PostOrder>{
+impl<T> CompleteTree<T, PostOrder> {
     #[inline]
-    pub fn from_postorder(arr:&[T])->Result<&CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner(arr,PostOrder)
-    }
-}
-
-impl<T> CompleteTree<T,PreOrder>{
-    #[inline]
-    pub fn from_preorder_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PreOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner_mut(arr,PreOrder)
-    }
-}
-impl<T> CompleteTree<T,InOrder>{
-    #[inline]
-    pub fn from_inorder_mut(arr:&mut [T])->Result<&mut CompleteTree<T,InOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner_mut(arr,InOrder)
-    }
-}
-impl<T> CompleteTree<T,PostOrder>{
-    #[inline]
-    pub fn from_post_mut(arr:&mut [T])->Result<&mut CompleteTree<T,PostOrder>,NotCompleteTreeSizeErr>{
-        CompleteTree::from_slice_inner_mut(arr,PostOrder)
+    pub fn from_postorder(
+        arr: &[T],
+    ) -> Result<&CompleteTree<T, PostOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner(arr, PostOrder)
     }
 }
 
+impl<T> CompleteTree<T, PreOrder> {
+    #[inline]
+    pub fn from_preorder_mut(
+        arr: &mut [T],
+    ) -> Result<&mut CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner_mut(arr, PreOrder)
+    }
+}
+impl<T> CompleteTree<T, InOrder> {
+    #[inline]
+    pub fn from_inorder_mut(
+        arr: &mut [T],
+    ) -> Result<&mut CompleteTree<T, InOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner_mut(arr, InOrder)
+    }
+}
+impl<T> CompleteTree<T, PostOrder> {
+    #[inline]
+    pub fn from_post_mut(
+        arr: &mut [T],
+    ) -> Result<&mut CompleteTree<T, PostOrder>, NotCompleteTreeSizeErr> {
+        CompleteTree::from_slice_inner_mut(arr, PostOrder)
+    }
+}
 
 impl<T, D> CompleteTree<T, D> {
     #[inline]
-    fn from_slice_inner(arr: &[T],_order:D) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
+    fn from_slice_inner(
+        arr: &[T],
+        _order: D,
+    ) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
         if valid_node_num(arr.len()) {
             let tree = unsafe { &*(arr as *const [T] as *const dfs_order::CompleteTree<T, D>) };
             Ok(tree)
@@ -200,7 +210,8 @@ impl<T, D> CompleteTree<T, D> {
 
     #[inline]
     fn from_slice_inner_mut(
-        arr: &mut [T],_order:D
+        arr: &mut [T],
+        _order: D,
     ) -> Result<&mut CompleteTree<T, D>, NotCompleteTreeSizeErr> {
         if valid_node_num(arr.len()) {
             let tree = unsafe { &mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T, D>) };
@@ -269,11 +280,11 @@ impl<'a, T: 'a, D> Vistr<'a, T, D> {
     }
 }
 
-impl<'a,T:'a> Visitor for Vistr<'a,T,PreOrder>{
+impl<'a, T: 'a> Visitor for Vistr<'a, T, PreOrder> {
     type Item = &'a T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_next::<_,PreOrder>(self)
+        vistr_next::<_, PreOrder>(self)
     }
 
     #[inline]
@@ -281,21 +292,20 @@ impl<'a,T:'a> Visitor for Vistr<'a,T,PreOrder>{
         vistr_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_preorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter(){
+        for a in self.remaining.iter() {
             func(a);
         }
     }
 }
-impl<'a,T:'a> Visitor for Vistr<'a,T,InOrder>{
+impl<'a, T: 'a> Visitor for Vistr<'a, T, InOrder> {
     type Item = &'a T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_next::<_,InOrder>(self)
+        vistr_next::<_, InOrder>(self)
     }
 
     #[inline]
@@ -303,21 +313,20 @@ impl<'a,T:'a> Visitor for Vistr<'a,T,InOrder>{
         vistr_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_inorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter(){
+        for a in self.remaining.iter() {
             func(a);
         }
     }
 }
-impl<'a,T:'a> Visitor for Vistr<'a,T,PostOrder>{
+impl<'a, T: 'a> Visitor for Vistr<'a, T, PostOrder> {
     type Item = &'a T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_next::<_,PostOrder>(self)
+        vistr_next::<_, PostOrder>(self)
     }
 
     #[inline]
@@ -325,23 +334,21 @@ impl<'a,T:'a> Visitor for Vistr<'a,T,PostOrder>{
         vistr_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_postorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter(){
+        for a in self.remaining.iter() {
             func(a);
         }
     }
 }
 
-
-fn vistr_dfs_level_remaining_hint<T,D:DfsOrder>(vistr:&Vistr<T,D>)->(usize,Option<usize>){
+fn vistr_dfs_level_remaining_hint<T, D: DfsOrder>(vistr: &Vistr<T, D>) -> (usize, Option<usize>) {
     let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }
-fn vistr_next<T,D:DfsOrder>(vistr:Vistr<T,D>)->(&T,Option<[Vistr<T,D>;2]>){
+fn vistr_next<T, D: DfsOrder>(vistr: Vistr<T, D>) -> (&T, Option<[Vistr<T, D>; 2]>) {
     let remaining = vistr.remaining;
     if remaining.len() == 1 {
         (&remaining[0], None)
@@ -368,9 +375,6 @@ unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PreOrder> {}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, InOrder> {}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PostOrder> {}
 
-
-
-
 impl<'a, T, D> std::ops::Deref for VistrMut<'a, T, D> {
     type Target = Vistr<'a, T, D>;
     #[inline]
@@ -378,11 +382,6 @@ impl<'a, T, D> std::ops::Deref for VistrMut<'a, T, D> {
         unsafe { &*(self as *const VistrMut<T, D> as *const Vistr<T, D>) }
     }
 }
-
-
-
-
-
 
 ///Tree visitor that returns a mutable reference to each element in the tree.
 #[repr(transparent)]
@@ -411,12 +410,13 @@ impl<'a, T: 'a, D> VistrMut<'a, T, D> {
     }
 }
 
-
-fn vistr_mut_dfs_level_remaining_hint<T,D:DfsOrder>(vistr:&VistrMut<T,D>)->(usize,Option<usize>){
+fn vistr_mut_dfs_level_remaining_hint<T, D: DfsOrder>(
+    vistr: &VistrMut<T, D>,
+) -> (usize, Option<usize>) {
     let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }
-fn vistr_mut_next<T,D:DfsOrder>(vistr:VistrMut<T,D>)->(&mut T,Option<[VistrMut<T,D>;2]>){
+fn vistr_mut_next<T, D: DfsOrder>(vistr: VistrMut<T, D>) -> (&mut T, Option<[VistrMut<T, D>; 2]>) {
     let remaining = vistr.remaining;
     if remaining.len() == 1 {
         (&mut remaining[0], None)
@@ -439,13 +439,11 @@ fn vistr_mut_next<T,D:DfsOrder>(vistr:VistrMut<T,D>)->(&mut T,Option<[VistrMut<T
     }
 }
 
-
-
-impl<'a,T:'a> Visitor for VistrMut<'a,T,PreOrder>{
+impl<'a, T: 'a> Visitor for VistrMut<'a, T, PreOrder> {
     type Item = &'a mut T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_mut_next::<_,PreOrder>(self)
+        vistr_mut_next::<_, PreOrder>(self)
     }
 
     #[inline]
@@ -453,22 +451,21 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T,PreOrder>{
         vistr_mut_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_preorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter_mut(){
+        for a in self.remaining.iter_mut() {
             func(a);
         }
     }
 }
 
-impl<'a,T:'a> Visitor for VistrMut<'a,T,InOrder>{
+impl<'a, T: 'a> Visitor for VistrMut<'a, T, InOrder> {
     type Item = &'a mut T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_mut_next::<_,InOrder>(self)
+        vistr_mut_next::<_, InOrder>(self)
     }
 
     #[inline]
@@ -476,21 +473,20 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T,InOrder>{
         vistr_mut_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_inorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter_mut(){
+        for a in self.remaining.iter_mut() {
             func(a);
         }
     }
 }
-impl<'a,T:'a> Visitor for VistrMut<'a,T,PostOrder>{
+impl<'a, T: 'a> Visitor for VistrMut<'a, T, PostOrder> {
     type Item = &'a mut T;
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
-        vistr_mut_next::<_,PostOrder>(self)
+        vistr_mut_next::<_, PostOrder>(self)
     }
 
     #[inline]
@@ -498,12 +494,11 @@ impl<'a,T:'a> Visitor for VistrMut<'a,T,PostOrder>{
         vistr_mut_dfs_level_remaining_hint(self)
     }
 
-    
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
     fn dfs_postorder(self, mut func: impl FnMut(Self::Item)) {
-        for a in self.remaining.iter_mut(){
+        for a in self.remaining.iter_mut() {
             func(a);
         }
     }
