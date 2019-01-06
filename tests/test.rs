@@ -1,8 +1,4 @@
-#![feature(test)]
-#![feature(trusted_len)]
-
 extern crate compt;
-extern crate test;
 use compt::*;
 
 fn assert_length<I: std::iter::ExactSizeIterator>(it: I) {

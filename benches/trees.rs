@@ -1,7 +1,6 @@
 #![feature(test)]
 
 extern crate test;
-
 extern crate compt;
 use compt::*;
 use test::*;

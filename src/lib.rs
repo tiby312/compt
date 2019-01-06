@@ -259,6 +259,7 @@ unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisi
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthVisitor: Visitor {}
 
+
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
 pub trait Visitor: Sized {
