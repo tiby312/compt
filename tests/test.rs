@@ -17,20 +17,20 @@ fn test_length() {
                 .unwrap();
 
         assert_length(k.vistr_mut().dfs_preorder_iter().take(3));
-        assert_length(k.vistr_mut().bfs_iter().take(3));
+        //assert_length(k.vistr_mut().bfs_iter().take(3));
 
         assert_length(k.vistr().dfs_preorder_iter().take(3));
-        assert_length(k.vistr().bfs_iter().take(3));
+        //assert_length(k.vistr().bfs_iter().take(3));
     }
     {
         let mut k =
             compt::bfs_order::CompleteTreeContainer::from_vec(vec![0, 1, 2, 3, 4, 5, 6]).unwrap();
 
         assert_length(k.vistr_mut().dfs_preorder_iter().take(3));
-        assert_length(k.vistr_mut().bfs_iter().take(3));
+        //assert_length(k.vistr_mut().bfs_iter().take(3));
 
         assert_length(k.vistr().dfs_preorder_iter().take(3));
-        assert_length(k.vistr().bfs_iter().take(3));
+        //assert_length(k.vistr().bfs_iter().take(3));
     }
 }
 

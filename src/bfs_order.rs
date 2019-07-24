@@ -26,13 +26,13 @@ impl<T> CompleteTreeContainer<T> {
     }
 }
 
-impl<T> std::ops::Deref for CompleteTreeContainer<T> {
+impl<T> core::ops::Deref for CompleteTreeContainer<T> {
     type Target = CompleteTree<T>;
     fn deref(&self) -> &CompleteTree<T> {
         unsafe { &*(self.nodes.as_slice() as *const [T] as *const bfs_order::CompleteTree<T>) }
     }
 }
-impl<T> std::ops::DerefMut for CompleteTreeContainer<T> {
+impl<T> core::ops::DerefMut for CompleteTreeContainer<T> {
     fn deref_mut(&mut self) -> &mut CompleteTree<T> {
         unsafe { &mut *(self.nodes.as_mut_slice() as *mut [T] as *mut bfs_order::CompleteTree<T>) }
     }
@@ -119,9 +119,9 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
         let arr_left =
-            unsafe { std::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
+            unsafe { core::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
         let arr_right =
-            unsafe { std::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
+            unsafe { core::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
 
         let len = self.arr.len();
         let curr = &mut self.arr[self.current];
@@ -157,7 +157,7 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
     }
 }
 
-impl<'a, T> std::ops::Deref for VistrMut<'a, T> {
+impl<'a, T> core::ops::Deref for VistrMut<'a, T> {
     type Target = Vistr<'a, T>;
     fn deref(&self) -> &Vistr<'a, T> {
         unsafe { &*(self as *const VistrMut<T> as *const Vistr<T>) }

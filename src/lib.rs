@@ -52,6 +52,11 @@
 //! do not intersect. With bfs ordering the tasks would still be operating on memory sections that interleave
 //!
 
+#![no_std]
+extern crate alloc;
+use alloc::vec::Vec;
+use core::marker::PhantomData;
+
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
@@ -59,7 +64,7 @@ pub mod bfs_order;
 ///you can turn the visitor into a slice representing the rest of the nodes underneath that visitor.
 pub mod dfs_order;
 
-use std::collections::vec_deque::VecDeque;
+//use core::collections::vec_deque::VecDeque;
 
 ///Compute the number of nodes in a complete binary tree based on a height.
 #[inline]
@@ -137,9 +142,9 @@ impl<C: Visitor> Iterator for DfsInOrderIter<C> {
     }
 }
 
-impl<C: Visitor> std::iter::FusedIterator for DfsInOrderIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsInOrderIter<C> {}
-impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for DfsInOrderIter<C> {}
+impl<C: Visitor> core::iter::FusedIterator for DfsInOrderIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for DfsInOrderIter<C> {}
+impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsInOrderIter<C> {}
 
 ///Dfs preorder iterator. Each call to next() will return the next element
 ///in dfs order.
@@ -151,9 +156,9 @@ pub struct DfsPreOrderIter<C: Visitor> {
     num: usize,
 }
 
-impl<C: Visitor> std::iter::FusedIterator for DfsPreOrderIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for DfsPreOrderIter<C> {}
-impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
+impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for DfsPreOrderIter<C> {}
+impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
 
 impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
     type Item = C::Item;
@@ -186,20 +191,22 @@ impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C: Visitor> {
-    a: VecDeque<C>,
+    //a: VecDeque<C>,
+    a:PhantomData<C>,
     num: usize,
     min_length: usize,
     length: Option<usize>,
 }
 
-impl<C: Visitor> std::iter::FusedIterator for BfsIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> std::iter::TrustedLen for BfsIter<C> {}
-impl<C: FixedDepthVisitor> std::iter::ExactSizeIterator for BfsIter<C> {}
+impl<C: Visitor> core::iter::FusedIterator for BfsIter<C> {}
+//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for BfsIter<C> {}
+impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for BfsIter<C> {}
 
 impl<C: Visitor> Iterator for BfsIter<C> {
     type Item = C::Item;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        /*
         let queue = &mut self.a;
         match queue.pop_front() {
             Some(e) => {
@@ -212,6 +219,8 @@ impl<C: Visitor> Iterator for BfsIter<C> {
             }
             None => None,
         }
+        */
+        unimplemented!()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -316,6 +325,8 @@ pub trait Visitor: Sized {
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
     fn bfs_iter(self) -> BfsIter<Self> {
+        unimplemented!();
+        /*
         let (levels, max_levels) = self.level_remaining_hint();
 
         //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
@@ -333,6 +344,7 @@ pub trait Visitor: Sized {
             length,
             num: 0,
         }
+        */
     }
 
     ///Provides a dfs preorder iterator. Unlike the callback version,

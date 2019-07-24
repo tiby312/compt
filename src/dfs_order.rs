@@ -1,5 +1,5 @@
 use super::*;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
 trait DfsOrder {
@@ -124,14 +124,14 @@ impl<T, D> CompleteTreeContainer<T, D> {
     }
 }
 
-impl<T, D> std::ops::Deref for CompleteTreeContainer<T, D> {
+impl<T, D> core::ops::Deref for CompleteTreeContainer<T, D> {
     type Target = CompleteTree<T, D>;
     #[inline]
     fn deref(&self) -> &CompleteTree<T, D> {
         unsafe { &*(self.nodes.as_slice() as *const [T] as *const dfs_order::CompleteTree<T, D>) }
     }
 }
-impl<T, D> std::ops::DerefMut for CompleteTreeContainer<T, D> {
+impl<T, D> core::ops::DerefMut for CompleteTreeContainer<T, D> {
     #[inline]
     fn deref_mut(&mut self) -> &mut CompleteTree<T, D> {
         unsafe {
@@ -150,7 +150,7 @@ pub struct CompleteTree<T, D> {
 
 impl<T> CompleteTree<T, PreOrder> {
     #[inline]
-    pub fn from_prder(arr: &[T]) -> Result<&CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_preorder(arr: &[T]) -> Result<&CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
         CompleteTree::from_slice_inner(arr, PreOrder)
     }
 }
@@ -344,8 +344,20 @@ impl<'a, T: 'a> Visitor for Vistr<'a, T, PostOrder> {
     }
 }
 
+
+//TODO put this somewhere else
+fn log_2(x: usize) -> usize {
+    const fn num_bits<T>() -> usize { core::mem::size_of::<T>() * 8 }
+
+    assert!(x > 0);
+    (num_bits::<usize>() as u32 - x.leading_zeros() - 1) as usize
+}
+
+
+
 fn vistr_dfs_level_remaining_hint<T, D: DfsOrder>(vistr: &Vistr<T, D>) -> (usize, Option<usize>) {
-    let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
+    let left = log_2(vistr.remaining.len()+1);
+    //let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }
 fn vistr_next<T, D: DfsOrder>(vistr: Vistr<T, D>) -> (&T, Option<[Vistr<T, D>; 2]>) {
@@ -375,7 +387,7 @@ unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PreOrder> {}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, InOrder> {}
 unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PostOrder> {}
 
-impl<'a, T, D> std::ops::Deref for VistrMut<'a, T, D> {
+impl<'a, T, D> core::ops::Deref for VistrMut<'a, T, D> {
     type Target = Vistr<'a, T, D>;
     #[inline]
     fn deref(&self) -> &Vistr<'a, T, D> {
@@ -413,7 +425,8 @@ impl<'a, T: 'a, D> VistrMut<'a, T, D> {
 fn vistr_mut_dfs_level_remaining_hint<T, D: DfsOrder>(
     vistr: &VistrMut<T, D>,
 ) -> (usize, Option<usize>) {
-    let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
+    let left = log_2(vistr.remaining.len()+1);
+    //let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }
 fn vistr_mut_next<T, D: DfsOrder>(vistr: VistrMut<T, D>) -> (&mut T, Option<[VistrMut<T, D>; 2]>) {
