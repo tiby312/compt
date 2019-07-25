@@ -23,7 +23,7 @@ fn main() {
         res.push(a);
     });
 
-    for a in right.bfs_iter() {
+    for a in right.dfs_preorder_iter() {
         res.push(a);
     }
 

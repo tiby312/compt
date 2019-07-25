@@ -1,5 +1,5 @@
 //!## Summary
-//! A library that provides a complete binary tree visitor trait with default implemenations for visiting strategies such as dfs_inorder or bfs, etc.
+//! A library that provides a complete binary tree visitor trait with default implemenations for visiting strategies such as dfs_inorder or dfs_preorder, etc.
 //! Some adaptors are also provided that let you map, zip, or optionally also produce the depth on every call to next().
 //! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
 //! One laid out in bfs, and one laid out in dfs in order in memory. Both of these flavors assume that every node in the tree is the same type.
@@ -55,7 +55,6 @@
 #![no_std]
 extern crate alloc;
 use alloc::vec::Vec;
-use core::marker::PhantomData;
 
 ///A complete binary tree stored in a Vec<T> laid out in bfs order.
 pub mod bfs_order;
@@ -187,11 +186,12 @@ impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
     }
 }
 
+/*
 ///Bfs Iterator. Each call to next() returns the next
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
 pub struct BfsIter<C: Visitor> {
-    //a: VecDeque<C>,
+    a: VecDeque<C>,
     a:PhantomData<C>,
     num: usize,
     min_length: usize,
@@ -199,14 +199,13 @@ pub struct BfsIter<C: Visitor> {
 }
 
 impl<C: Visitor> core::iter::FusedIterator for BfsIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for BfsIter<C> {}
 impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for BfsIter<C> {}
 
 impl<C: Visitor> Iterator for BfsIter<C> {
     type Item = C::Item;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        /*
+        
         let queue = &mut self.a;
         match queue.pop_front() {
             Some(e) => {
@@ -219,8 +218,6 @@ impl<C: Visitor> Iterator for BfsIter<C> {
             }
             None => None,
         }
-        */
-        unimplemented!()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -230,6 +227,7 @@ impl<C: Visitor> Iterator for BfsIter<C> {
         )
     }
 }
+*/
 
 ///Map iterator adapter
 pub struct Map<C, F> {
@@ -322,11 +320,12 @@ pub trait Visitor: Sized {
         Flip(self)
     }
 
+    /*
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
     fn bfs_iter(self) -> BfsIter<Self> {
-        unimplemented!();
-        /*
+        
+        
         let (levels, max_levels) = self.level_remaining_hint();
 
         //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
@@ -344,8 +343,9 @@ pub trait Visitor: Sized {
             length,
             num: 0,
         }
-        */
+        
     }
+    */
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
