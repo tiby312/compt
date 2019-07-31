@@ -142,7 +142,6 @@ impl<C: Visitor> Iterator for DfsInOrderIter<C> {
 }
 
 impl<C: Visitor> core::iter::FusedIterator for DfsInOrderIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for DfsInOrderIter<C> {}
 impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsInOrderIter<C> {}
 
 ///Dfs preorder iterator. Each call to next() will return the next element
@@ -155,8 +154,7 @@ pub struct DfsPreOrderIter<C: Visitor> {
     num: usize,
 }
 
-impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {}
-//unsafe impl<C: FixedDepthVisitor> core::iter::TrustedLen for DfsPreOrderIter<C> {}
+impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {} 
 impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
 
 impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
@@ -187,6 +185,8 @@ impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
 }
 
 /*
+Removed since wanted to make crate no_std.
+
 ///Bfs Iterator. Each call to next() returns the next
 ///element in bfs order.
 ///Internally uses a VecDeque for the queue.
@@ -529,7 +529,6 @@ impl<T1: Visitor, T2: Visitor> Visitor for Zip<T1, T2> {
                 let [aleft, aright] = a_rest;
                 let [bleft, bright] = b_rest;
 
-                //let b_rest=b_rest.unwrap();
                 let f1 = Zip { a: aleft, b: bleft };
                 let f2 = Zip {
                     a: aright,
