@@ -282,13 +282,13 @@ pub trait Visitor: Sized {
     ///Think of is as height-depth.
     ///This is used to make good allocations when doing dfs and bfs.
     ///Defaults to (0,None)
-    #[inline]
+    #[inline(always)]
     fn level_remaining_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
 
     ///Iterator Adapter to also produce the depth each iteration.
-    #[inline]
+    #[inline(always)]
     fn with_depth(self, start_depth: Depth) -> LevelIter<Self> {
         LevelIter {
             inner: self,
@@ -297,25 +297,25 @@ pub trait Visitor: Sized {
     }
 
     ///Combine two tree visitors.
-    #[inline]
+    #[inline(always)]
     fn zip<F: Visitor>(self, f: F) -> Zip<Self, F> {
         Zip { a: self, b: f }
     }
 
     ///Map iterator adapter
-    #[inline]
+    #[inline(always)]
     fn map<B, F: Fn(Self::Item) -> B>(self, func: F) -> Map<Self, F> {
         Map { func, inner: self }
     }
 
     ///Only produce children up to num.
-    #[inline]
+    #[inline(always)]
     fn take(self, num: usize) -> Take<Self> {
         Take { a: self, num }
     }
 
     ///Flips left and right children.
-    #[inline]
+    #[inline(always)]
     fn flip(self) -> Flip<Self> {
         Flip(self)
     }
