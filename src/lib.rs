@@ -154,6 +154,8 @@ pub struct DfsPreOrderIter<C: Visitor> {
     num: usize,
 }
 
+
+
 impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {} 
 impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
 
@@ -229,6 +231,7 @@ impl<C: Visitor> Iterator for BfsIter<C> {
 }
 */
 
+
 ///Map iterator adapter
 pub struct Map<C, F> {
     func: F,
@@ -266,6 +269,27 @@ unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisi
 ///so those iterators can implement TrustedLen in this case.
 pub unsafe trait FixedDepthVisitor: Visitor {}
 
+
+
+use core::iter::FusedIterator;
+///A version of iterating in dfs preorder implemented using iter::from_fn
+///TODO implement all the iterators with this.
+pub fn dfs_preorder_iter2<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIterator{
+    let mut stack=Vec::new();
+    stack.push(a);
+    core::iter::from_fn(move ||{
+        if let Some(x)=stack.pop(){
+            let (i, next) = x.next();
+            if let Some([left, right]) = next {
+                stack.push(right);
+                stack.push(left);
+            }
+            Some(i)
+        }else{
+            None
+        }
+    }).fuse()
+}
 
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
@@ -346,6 +370,7 @@ pub trait Visitor: Sized {
         
     }
     */
+
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
