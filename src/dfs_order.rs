@@ -452,6 +452,20 @@ fn vistr_mut_next<T, D: DfsOrder>(vistr: VistrMut<T, D>) -> (&mut T, Option<[Vis
     }
 }
 
+impl<'a, T: 'a> VisitorExt for VistrMut<'a, T, PreOrder> {
+    type PreOrderIter=impl Iterator<Item=Self::Item>;
+    type InOrderIter=impl Iterator<Item=Self::Item>;
+    
+
+    fn dfs_preorder_iter(self)->Self::PreOrderIter{
+        self.remaining.into_iter()
+    }
+
+    #[inline]
+    fn dfs_inorder_iter(self) -> Self::InOrderIter {
+        dfs_inorder_iter(self)
+    }
+}
 impl<'a, T: 'a> Visitor for VistrMut<'a, T, PreOrder> {
     type Item = &'a mut T;
     #[inline]
@@ -472,10 +486,26 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T, PreOrder> {
             func(a);
         }
     }
+
 }
 
+
+impl<'a, T: 'a> VisitorExt for VistrMut<'a, T, InOrder> {
+    type PreOrderIter=impl Iterator<Item=Self::Item>;
+    type InOrderIter=impl Iterator<Item=Self::Item>;
+    
+    fn dfs_preorder_iter(self)->Self::PreOrderIter{
+        dfs_preorder_iter(self)
+    }
+
+    #[inline]
+    fn dfs_inorder_iter(self) -> Self::InOrderIter {
+        self.remaining.into_iter()
+    }
+}
 impl<'a, T: 'a> Visitor for VistrMut<'a, T, InOrder> {
     type Item = &'a mut T;
+    
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
         vistr_mut_next::<_, InOrder>(self)
@@ -486,6 +516,8 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T, InOrder> {
         vistr_mut_dfs_level_remaining_hint(self)
     }
 
+
+
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
     #[inline]
@@ -495,8 +527,23 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T, InOrder> {
         }
     }
 }
+
+impl<'a, T: 'a> VisitorExt for VistrMut<'a, T, PostOrder> {
+    type PreOrderIter=impl Iterator<Item=Self::Item>;
+    type InOrderIter=impl Iterator<Item=Self::Item>;
+    
+    fn dfs_preorder_iter(self)->Self::PreOrderIter{
+        dfs_preorder_iter(self)
+    }
+
+    #[inline]
+    fn dfs_inorder_iter(self) -> Self::InOrderIter {
+        dfs_inorder_iter(self)
+    }
+}
 impl<'a, T: 'a> Visitor for VistrMut<'a, T, PostOrder> {
     type Item = &'a mut T;
+    
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
         vistr_mut_next::<_, PostOrder>(self)
@@ -506,6 +553,8 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T, PostOrder> {
     fn level_remaining_hint(&self) -> (usize, Option<usize>) {
         vistr_mut_dfs_level_remaining_hint(self)
     }
+
+
 
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.

@@ -51,7 +51,7 @@
 //! With dfs ordering, once you divide the problem, the memory sections that each task deals with
 //! do not intersect. With bfs ordering the tasks would still be operating on memory sections that interleave
 //!
-
+#![feature(type_alias_impl_trait)]
 #![no_std]
 extern crate alloc;
 use alloc::vec::Vec;
@@ -83,153 +83,6 @@ fn valid_node_num(num: usize) -> bool {
 pub fn compute_height(num_nodes: usize) -> usize {
     (num_nodes + 1).trailing_zeros() as usize
 }
-
-///Dfs in order iterator. Each call to next() will return the next element
-///in dfs in order.
-///Internally uses a Vec for the stack.
-pub struct DfsInOrderIter<C: Visitor> {
-    a: Vec<(C::Item, Option<C>)>,
-    length: Option<usize>,
-    min_length: usize,
-    num: usize,
-}
-
-impl<C: Visitor> DfsInOrderIter<C> {
-    fn add_all_lefts(stack: &mut Vec<(C::Item, Option<C>)>, node: C) {
-        let mut target = Some(node);
-        loop {
-            let (i, next) = target.take().unwrap().next();
-            match next {
-                Some([left, right]) => {
-                    let bleep = (i, Some(right));
-                    stack.push(bleep);
-                    target = Some(left);
-                }
-                None => {
-                    let bleep = (i, None);
-                    stack.push(bleep);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-impl<C: Visitor> Iterator for DfsInOrderIter<C> {
-    type Item = C::Item;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.a.pop() {
-            Some((i, nl)) => match nl {
-                Some(nl) => {
-                    let res = i;
-                    DfsInOrderIter::add_all_lefts(&mut self.a, nl);
-                    self.num += 1;
-                    Some(res)
-                }
-                None => Some(i),
-            },
-            None => None,
-        }
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (
-            self.min_length - self.num,
-            self.length.map(|a| a - self.num),
-        )
-    }
-}
-
-impl<C: Visitor> core::iter::FusedIterator for DfsInOrderIter<C> {}
-impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsInOrderIter<C> {}
-
-///Dfs preorder iterator. Each call to next() will return the next element
-///in dfs order.
-///Internally uses a Vec for the stack.
-pub struct DfsPreOrderIter<C: Visitor> {
-    a: Vec<C>,
-    length: Option<usize>,
-    min_length: usize,
-    num: usize,
-}
-
-
-
-impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {} 
-impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
-
-impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
-    type Item = C::Item;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.a.pop() {
-            Some(x) => {
-                let (i, next) = x.next();
-                if let Some([left, right]) = next {
-                    self.a.push(right);
-                    self.a.push(left);
-                }
-                self.num += 1;
-                Some(i)
-            }
-            None => None,
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (
-            self.min_length - self.num,
-            self.length.map(|a| a - self.num),
-        )
-    }
-}
-
-/*
-Removed since wanted to make crate no_std.
-
-///Bfs Iterator. Each call to next() returns the next
-///element in bfs order.
-///Internally uses a VecDeque for the queue.
-pub struct BfsIter<C: Visitor> {
-    a: VecDeque<C>,
-    a:PhantomData<C>,
-    num: usize,
-    min_length: usize,
-    length: Option<usize>,
-}
-
-impl<C: Visitor> core::iter::FusedIterator for BfsIter<C> {}
-impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for BfsIter<C> {}
-
-impl<C: Visitor> Iterator for BfsIter<C> {
-    type Item = C::Item;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        
-        let queue = &mut self.a;
-        match queue.pop_front() {
-            Some(e) => {
-                let (nn, rest) = e.next();
-                if let Some([left, right]) = rest {
-                    queue.push_back(left);
-                    queue.push_back(right);
-                }
-                Some(nn)
-            }
-            None => None,
-        }
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (
-            self.min_length - self.num,
-            self.length.map(|a| a - self.num),
-        )
-    }
-}
-*/
 
 
 ///Map iterator adapter
@@ -272,11 +125,53 @@ pub unsafe trait FixedDepthVisitor: Visitor {}
 
 
 use core::iter::FusedIterator;
+
+pub fn dfs_inorder_iter<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIterator{
+    
+    fn add_all_lefts<C:Visitor>(stack: &mut Vec<(C::Item, Option<C>)>, node: C) {
+        let mut target = Some(node);
+        loop {
+            let (i, next) = target.take().unwrap().next();
+            match next {
+                Some([left, right]) => {
+                    let bleep = (i, Some(right));
+                    stack.push(bleep);
+                    target = Some(left);
+                }
+                None => {
+                    let bleep = (i, None);
+                    stack.push(bleep);
+                    break;
+                }
+            }
+        }
+    }
+
+    let mut stack=Vec::new();
+    
+    add_all_lefts(&mut stack,a);
+
+    core::iter::from_fn(move ||{
+        match stack.pop() {
+            Some((i, nl)) => match nl {
+                Some(nl) => {
+                    let res = i;
+                    add_all_lefts(&mut stack, nl);
+                    Some(res)
+                }
+                None => Some(i),
+            },
+            None => None,
+        }
+    }).fuse()
+}
+
 ///A version of iterating in dfs preorder implemented using iter::from_fn
 ///TODO implement all the iterators with this.
-pub fn dfs_preorder_iter2<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIterator{
+pub fn dfs_preorder_iter<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIterator{
     let mut stack=Vec::new();
     stack.push(a);
+    
     core::iter::from_fn(move ||{
         if let Some(x)=stack.pop(){
             let (i, next) = x.next();
@@ -291,12 +186,28 @@ pub fn dfs_preorder_iter2<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIter
     }).fuse()
 }
 
+pub trait VisitorExt : Visitor{
+    type PreOrderIter:Iterator<Item=Self::Item>;
+    type InOrderIter:Iterator<Item=Self::Item>;
+
+    ///Provides a dfs preorder iterator. Unlike the callback version,
+    ///This one relies on dynamic allocation for its stack.
+    #[inline]
+    fn dfs_preorder_iter(self) -> Self::PreOrderIter;
+
+    #[inline]
+    fn dfs_inorder_iter(self) -> Self::InOrderIter;
+
+}
+//impl<T:Visitor> VisitorExt for T{}
+
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
 pub trait Visitor: Sized {
     ///The common item produced for both leafs and non leafs.
     type Item;
 
+    
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
     fn next(self) -> (Self::Item, Option<[Self; 2]>);
@@ -372,42 +283,7 @@ pub trait Visitor: Sized {
     */
 
 
-    ///Provides a dfs preorder iterator. Unlike the callback version,
-    ///This one relies on dynamic allocation for its stack.
-    #[inline]
-    fn dfs_preorder_iter(self) -> DfsPreOrderIter<Self> {
-        let (levels, max_levels) = self.level_remaining_hint();
-        let mut a = Vec::with_capacity(levels);
-
-        a.push(self);
-
-        let min_length = 2usize.pow(levels as u32) - 1;
-        let length = max_levels.map(|levels_max| 2usize.pow(levels_max as u32) - 1);
-        DfsPreOrderIter {
-            a,
-            length,
-            min_length,
-            num: 0,
-        }
-    }
-    #[inline]
-    fn dfs_inorder_iter(self) -> DfsInOrderIter<Self> {
-        let (levels, max_levels) = self.level_remaining_hint();
-        let mut a = Vec::with_capacity(levels);
-
-        let length = max_levels.map(|levels_max| 2usize.pow(levels_max as u32) - 1);
-
-        let min_length = 2usize.pow(levels as u32) - 1;
-
-        DfsInOrderIter::add_all_lefts(&mut a, self);
-
-        DfsInOrderIter {
-            a,
-            min_length,
-            length,
-            num: 0,
-        }
-    }
+    
 
     ///Calls the closure in dfs preorder (root,left,right).
     ///Takes advantage of the callstack to do dfs.
