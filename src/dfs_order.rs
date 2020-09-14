@@ -161,6 +161,22 @@ impl<T> CompleteTree<T, InOrder> {
     }
 }
 impl<T> CompleteTree<T, PostOrder> {
+    pub fn vistr_mut2(&mut self)->impl Visitor<Item=&mut T>{
+    
+        let f=log_2(self.nodes.len()+1);
+
+        let a=from_fn(&mut self.nodes,|a|{
+            if a.len()==1{
+                (&mut a[0],None)
+            }else{
+                let (a,b,c)=PostOrder::split_mut(a);
+                (a,Some([b,c]))
+            }
+            
+        });
+        
+        with_size_hint(a,f,Some(f))
+    }
     #[inline]
     pub fn from_postorder(
         arr: &[T],
@@ -170,6 +186,22 @@ impl<T> CompleteTree<T, PostOrder> {
 }
 
 impl<T> CompleteTree<T, PreOrder> {
+    pub fn vistr_mut2(&mut self)->impl Visitor<Item=&mut T>{
+    
+        let f=log_2(self.nodes.len()+1);
+
+        let a=from_fn(&mut self.nodes,|a|{
+            if a.len()==1{
+                (&mut a[0],None)
+            }else{
+                let (a,b,c)=PreOrder::split_mut(a);
+                (a,Some([b,c]))
+            }
+            
+        });
+        
+        with_size_hint(a,f,Some(f))
+    }
     #[inline]
     pub fn from_preorder_mut(
         arr: &mut [T],
@@ -178,6 +210,22 @@ impl<T> CompleteTree<T, PreOrder> {
     }
 }
 impl<T> CompleteTree<T, InOrder> {
+    pub fn vistr_mut2(&mut self)->impl Visitor<Item=&mut T>{
+    
+        let f=log_2(self.nodes.len()+1);
+
+        let a=from_fn(&mut self.nodes,|a|{
+            if a.len()==1{
+                (&mut a[0],None)
+            }else{
+                let (a,b,c)=InOrder::split_mut(a);
+                (a,Some([b,c]))
+            }
+            
+        });
+        
+        with_size_hint(a,f,Some(f))
+    }
     #[inline]
     pub fn from_inorder_mut(
         arr: &mut [T],
@@ -193,6 +241,7 @@ impl<T> CompleteTree<T, PostOrder> {
         CompleteTree::from_slice_inner_mut(arr, PostOrder)
     }
 }
+
 
 impl<T, D> CompleteTree<T, D> {
     #[inline]
@@ -236,21 +285,6 @@ impl<T, D> CompleteTree<T, D> {
         &mut self.nodes
     }
 
-    #[inline]
-    pub fn vistr(&self) -> Vistr<T, D> {
-        Vistr {
-            _p: PhantomData,
-            remaining: &self.nodes,
-        }
-    }
-
-    #[inline]
-    pub fn vistr_mut(&mut self) -> VistrMut<T, D> {
-        VistrMut {
-            _p: PhantomData,
-            remaining: &mut self.nodes,
-        }
-    }
 }
 
 ///Tree visitor that returns a reference to each element in the tree.

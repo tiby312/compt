@@ -199,7 +199,101 @@ pub trait VisitorExt : Visitor{
     fn dfs_inorder_iter(self) -> Self::InOrderIter;
 
 }
-//impl<T:Visitor> VisitorExt for T{}
+
+
+fn testy(){
+    let mut arr=[0,1,2,3,4,5];
+    let v=from_fn(&mut arr as &mut [_],|a|{
+        assert!(!a.is_empty());
+        if(a.len()==1){
+            (a[0],None)
+        }else{
+            let mid=a.len();
+            
+            let (left,rest)=a.split_at_mut(mid);
+            let (mid,right)=rest.split_at_mut(1);
+            (mid[0],Some([left,right]))
+        }
+    });
+}
+
+/*
+pub fn wrap_mut<'a:'b,'b,T:'a>(a:&'b mut impl Visitor<Item=&'a mut T>) -> impl Visitor<Item=&'b mut T>+'b{
+    use core::mem::*;
+    let mut k=unsafe { MaybeUninit::zeroed().assume_init() };
+    core::mem::swap(&mut k,a);
+    
+    from_fn(k,|a|{
+        let (r,rest)=a.next();
+        let r:&'b mut T=r;
+        match rest{
+            Some(rr)=>{
+                (r,Some(rr))
+            },
+            None=>{
+                (r,None)
+
+            }
+        }
+    })
+}
+*/
+
+pub fn with_size_hint<K>(a:impl Visitor<Item=K>,b:usize,c:Option<usize>)->impl Visitor<Item=K>{
+    struct Foo<A>(A,(usize,Option<usize>));
+    impl<A:Visitor> Visitor for Foo<A>{
+        type Item=A::Item;
+        fn next(self)->(Self::Item,Option<[Self;2]>){
+            match self.0.next(){
+                (a,None)=>(a,None),
+                (a,Some([left,right]))=>{
+                    (a,Some([Foo(left,self.1),Foo(right,self.1)]))
+                }
+            }
+
+        }
+        fn level_remaining_hint(&self)->(usize,Option<usize>){
+            self.1
+        }
+    }
+    Foo(a,(b,c))
+}
+
+
+
+/*
+fn floop<A,T>(x:impl Axis,aaa:A,a:impl Visitor<Item=T>,mut func:impl FnMut(bool,A,T)->Option<[A;2]>){
+    match a.next(){
+        (rr,None)=>assert!(func(x.is_xaxis(),aaa,rr).is_none()),
+        (rr,Some([l,r]))=>{
+            let [aaa1,aaa2]=func(x.is_xaxis(),aaa,rr).unwrap();
+            floop(x.next(),aaa1,l,&mut func);
+            floop(x.next(),aaa2,r,func);
+        }
+    }
+}
+*/
+
+pub fn from_fn<A,B>(ff:A,a: impl Fn(A)->(B, Option<[A; 2]>)+Clone+Copy  )->impl Visitor<Item=B>{
+    use core::marker::PhantomData;
+    struct Foo<A,B,F>(F,A,PhantomData<B>);
+    impl<A,B,F:Fn(A)->(B,Option<[A;2]>)+Clone> Visitor for Foo<A,B,F>{
+        type Item=B;
+        fn next(self)->(B,Option<[Self;2]>){
+            let (a,b)=(self.0)(self.1);
+
+            (a,match b{
+                Some([x,y])=>{
+                    let f2=self.0.clone();
+                    Some([Foo(self.0,x,PhantomData),Foo(f2,y,PhantomData)])
+                },
+                None=>None
+            })
+        }
+    }
+    Foo(a,ff,PhantomData)
+}
+
 
 ///The trait this crate revoles around.
 ///A complete binary tree visitor.
@@ -211,6 +305,7 @@ pub trait Visitor: Sized {
     ///Consume this visitor, and produce the element it was pointing to
     ///along with it's children visitors.
     fn next(self) -> (Self::Item, Option<[Self; 2]>);
+
 
     ///Return the levels remaining including the one that will be produced by consuming this iterator.
     ///So if you first made this object from the root for a tree of size 5, it should return 5.
