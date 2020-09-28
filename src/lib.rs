@@ -267,7 +267,11 @@ unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisi
 ///If implemented, then the level_remaining_hint must return the exact height of the tree.
 ///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
 ///so those iterators can implement TrustedLen in this case.
-pub unsafe trait FixedDepthVisitor: Visitor {}
+pub unsafe trait FixedDepthVisitor: Visitor {
+    fn get_height(&self)->usize{
+        self.level_remaining_hint().0
+    }
+}
 
 
 

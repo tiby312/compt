@@ -410,6 +410,7 @@ impl<'a, T: 'a, D> VistrMut<'a, T, D> {
             remaining: self.remaining,
         }
     }
+    
 
     #[inline]
     pub fn as_slice_mut(&mut self) -> &mut [T] {
