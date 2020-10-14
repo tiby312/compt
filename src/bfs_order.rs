@@ -1,4 +1,5 @@
 use super::*;
+use alloc::boxed::Box;
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
 #[derive(Copy, Clone, Debug)]
@@ -6,13 +7,13 @@ pub struct NotCompleteTreeSizeErr;
 
 ///Contains of a Complete tree. Internally uses a Vec.
 pub struct CompleteTreeContainer<T> {
-    nodes: Vec<T>,
+    nodes: Box<[T]>,
 }
 impl<T> CompleteTreeContainer<T> {
     #[inline]
     pub fn from_vec(vec: Vec<T>) -> Result<CompleteTreeContainer<T>, NotCompleteTreeSizeErr> {
         if valid_node_num(vec.len()) {
-            Ok(CompleteTreeContainer { nodes: vec })
+            Ok(CompleteTreeContainer { nodes: vec.into_boxed_slice() })
         } else {
             Err(NotCompleteTreeSizeErr)
         }
@@ -20,7 +21,7 @@ impl<T> CompleteTreeContainer<T> {
 
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
-    pub fn into_nodes(self) -> Vec<T> {
+    pub fn into_nodes(self) -> Box<[T]> {
         let CompleteTreeContainer { nodes } = self;
         nodes
     }
@@ -29,12 +30,12 @@ impl<T> CompleteTreeContainer<T> {
 impl<T> core::ops::Deref for CompleteTreeContainer<T> {
     type Target = CompleteTree<T>;
     fn deref(&self) -> &CompleteTree<T> {
-        unsafe { &*(self.nodes.as_slice() as *const [T] as *const bfs_order::CompleteTree<T>) }
+        unsafe { &*(&self.nodes as &[T] as *const [T] as *const bfs_order::CompleteTree<T>) }
     }
 }
 impl<T> core::ops::DerefMut for CompleteTreeContainer<T> {
     fn deref_mut(&mut self) -> &mut CompleteTree<T> {
-        unsafe { &mut *(self.nodes.as_mut_slice() as *mut [T] as *mut bfs_order::CompleteTree<T>) }
+        unsafe { &mut *(&mut self.nodes as &mut [T] as *mut [T] as *mut bfs_order::CompleteTree<T>) }
     }
 }
 

@@ -1,5 +1,6 @@
 use super::*;
 use core::marker::PhantomData;
+use alloc::boxed::Box;
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
 trait DfsOrder {
@@ -69,7 +70,7 @@ pub struct NotCompleteTreeSizeErr;
 #[repr(transparent)]
 pub struct CompleteTreeContainer<T, D> {
     _p: PhantomData<D>,
-    nodes: Vec<T>,
+    nodes: Box<[T]>,
 }
 
 impl<T> CompleteTreeContainer<T, PreOrder> {
@@ -102,7 +103,7 @@ impl<T> CompleteTreeContainer<T, PostOrder> {
 impl<T, D> CompleteTreeContainer<T, D> {
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
-    pub fn into_nodes(self) -> Vec<T> {
+    pub fn into_nodes(self) -> Box<[T]> {
         self.nodes
     }
 }
@@ -116,7 +117,7 @@ impl<T, D> CompleteTreeContainer<T, D> {
         if (vec.len() + 1).is_power_of_two() && !vec.is_empty() {
             Ok(CompleteTreeContainer {
                 _p: PhantomData,
-                nodes: vec,
+                nodes: vec.into_boxed_slice(),
             })
         } else {
             Err(NotCompleteTreeSizeErr)
@@ -128,14 +129,14 @@ impl<T, D> core::ops::Deref for CompleteTreeContainer<T, D> {
     type Target = CompleteTree<T, D>;
     #[inline]
     fn deref(&self) -> &CompleteTree<T, D> {
-        unsafe { &*(self.nodes.as_slice() as *const [T] as *const dfs_order::CompleteTree<T, D>) }
+        unsafe { &*(&self.nodes as &[T] as *const [T] as *const dfs_order::CompleteTree<T, D>) }
     }
 }
 impl<T, D> core::ops::DerefMut for CompleteTreeContainer<T, D> {
     #[inline]
     fn deref_mut(&mut self) -> &mut CompleteTree<T, D> {
         unsafe {
-            &mut *(self.nodes.as_mut_slice() as *mut [T] as *mut dfs_order::CompleteTree<T, D>)
+            &mut *(&mut self.nodes as &mut [T] as *mut [T] as *mut dfs_order::CompleteTree<T, D>)
         }
     }
 }
