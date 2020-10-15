@@ -71,9 +71,21 @@ pub fn compute_num_nodes(height: usize) -> usize {
     (1 << height) - 1
 }
 
+///Error indicating the vec that was passed is not a size that you would expect for the given height.
+#[derive(Copy, Clone, Debug)]
+pub struct NotCompleteTreeSizeErr{
+    pub length:usize
+}
+
+
 #[must_use]
-fn valid_node_num(num: usize) -> bool {
-    (num + 1).is_power_of_two() && num != 0
+fn valid_node_num(num: usize) -> Result<(),NotCompleteTreeSizeErr> {
+    if (num + 1).is_power_of_two() && num != 0{
+        Ok(())
+    }else{
+        Err(NotCompleteTreeSizeErr{length:num})
+    }
+
 }
 
 ///Computes the height for the number of nodes given.

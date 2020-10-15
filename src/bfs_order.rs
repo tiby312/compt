@@ -1,9 +1,6 @@
 use super::*;
 use alloc::boxed::Box;
 
-///Error indicating the vec that was passed is not a size that you would expect for the given height.
-#[derive(Copy, Clone, Debug)]
-pub struct NotCompleteTreeSizeErr;
 
 ///Contains of a Complete tree. Internally uses a Vec.
 pub struct CompleteTreeContainer<T> {
@@ -12,11 +9,9 @@ pub struct CompleteTreeContainer<T> {
 impl<T> CompleteTreeContainer<T> {
     #[inline]
     pub fn from_vec(vec: Vec<T>) -> Result<CompleteTreeContainer<T>, NotCompleteTreeSizeErr> {
-        if valid_node_num(vec.len()) {
-            Ok(CompleteTreeContainer { nodes: vec.into_boxed_slice() })
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(vec.len())?;
+        Ok(CompleteTreeContainer { nodes: vec.into_boxed_slice() })
+        
     }
 
     #[inline]
@@ -48,22 +43,16 @@ pub struct CompleteTree<T> {
 impl<T> CompleteTree<T> {
     #[inline]
     pub fn from_slice(arr: &[T]) -> Result<&CompleteTree<T>, NotCompleteTreeSizeErr> {
-        if valid_node_num(arr.len()) {
-            let tree = unsafe { &*(arr as *const [T] as *const bfs_order::CompleteTree<T>) };
-            Ok(tree)
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(arr.len())?; 
+        let tree = unsafe { &*(arr as *const [T] as *const bfs_order::CompleteTree<T>) };
+        Ok(tree)
     }
 
     #[inline]
     pub fn from_slice_mut(arr: &mut [T]) -> Result<&mut CompleteTree<T>, NotCompleteTreeSizeErr> {
-        if valid_node_num(arr.len()) {
-            let tree = unsafe { &mut *(arr as *mut [T] as *mut bfs_order::CompleteTree<T>) };
-            Ok(tree)
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(arr.len())?;
+        let tree = unsafe { &mut *(arr as *mut [T] as *mut bfs_order::CompleteTree<T>) };
+        Ok(tree)
     }
 
     #[inline]

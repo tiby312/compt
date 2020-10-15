@@ -62,10 +62,6 @@ impl DfsOrder for PostOrder {
     }
 }
 
-///Error indicating the vec that was passed is not a size that you would expect for the given height.
-#[derive(Copy, Clone, Debug)]
-pub struct NotCompleteTreeSizeErr;
-
 ///Container for a dfs order tree. Internally uses a Vec. Derefs to a CompleteTree.
 #[repr(transparent)]
 pub struct CompleteTreeContainer<T, D> {
@@ -114,14 +110,13 @@ impl<T, D> CompleteTreeContainer<T, D> {
         vec: Vec<T>,
         _order: D,
     ) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
-        if (vec.len() + 1).is_power_of_two() && !vec.is_empty() {
-            Ok(CompleteTreeContainer {
-                _p: PhantomData,
-                nodes: vec.into_boxed_slice(),
-            })
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(vec.len())?;
+        
+        Ok(CompleteTreeContainer {
+            _p: PhantomData,
+            nodes: vec.into_boxed_slice(),
+        })
+    
     }
 }
 
@@ -201,12 +196,9 @@ impl<T, D> CompleteTree<T, D> {
         arr: &[T],
         _order: D,
     ) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
-        if valid_node_num(arr.len()) {
-            let tree = unsafe { &*(arr as *const [T] as *const dfs_order::CompleteTree<T, D>) };
-            Ok(tree)
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(arr.len())?;
+        let tree = unsafe { &*(arr as *const [T] as *const dfs_order::CompleteTree<T, D>) };
+        Ok(tree)
     }
 
     #[inline]
@@ -214,12 +206,10 @@ impl<T, D> CompleteTree<T, D> {
         arr: &mut [T],
         _order: D,
     ) -> Result<&mut CompleteTree<T, D>, NotCompleteTreeSizeErr> {
-        if valid_node_num(arr.len()) {
-            let tree = unsafe { &mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T, D>) };
-            Ok(tree)
-        } else {
-            Err(NotCompleteTreeSizeErr)
-        }
+        valid_node_num(arr.len())?;
+        let tree = unsafe { &mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T, D>) };
+        Ok(tree)
+        
     }
 
     #[inline]
