@@ -75,6 +75,7 @@ impl<T> CompleteTree<T> {
         VistrMut {
             current: 0,
             arr: &mut self.nodes,
+            _p:PhantomData
         }
     }
 
@@ -95,10 +96,12 @@ impl<T> CompleteTree<T> {
 #[derive(Copy, Clone, Debug)]
 struct NodeIndex(usize);
 
+use core::marker::PhantomData;
 ///Tree visitor that returns a mutable reference to each element in the tree.
 pub struct VistrMut<'a, T: 'a> {
     current: usize,
-    arr: &'a mut [T],
+    arr: *mut [T],
+    _p:PhantomData<&'a mut [T]>
 }
 
 unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T> {}
@@ -108,13 +111,14 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
 
     #[inline]
     fn next(self) -> (Self::Item, Option<[Self; 2]>) {
+        /*
         let arr_left =
             unsafe { core::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
         let arr_right =
             unsafe { core::slice::from_raw_parts_mut(self.arr.as_mut_ptr(), self.arr.len()) };
-
-        let len = self.arr.len();
-        let curr = &mut self.arr[self.current];
+        */
+        let len = unsafe{(*self.arr).len()};
+        let curr = unsafe{&mut (*self.arr)[self.current]};
 
         if self.current >= len / 2 {
             (curr, None)
@@ -128,11 +132,13 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
             let j = [
                 VistrMut {
                     current: left,
-                    arr: arr_left,
+                    arr: self.arr as *mut _,
+                    _p:PhantomData
                 },
                 VistrMut {
                     current: right,
-                    arr: arr_right,
+                    arr: self.arr as *mut _,
+                    _p:PhantomData
                 },
             ];
             (curr, Some(j))
@@ -141,7 +147,7 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
     #[inline]
     fn level_remaining_hint(&self) -> (usize, Option<usize>) {
         let depth = compute_height(self.current);
-        let height = compute_height(self.arr.len());
+        let height = compute_height(unsafe{(*self.arr).len()});
         let diff = height - depth;
         (diff, Some(diff))
     }
