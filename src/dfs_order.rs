@@ -97,14 +97,33 @@ impl<T> CompleteTreeContainer<T, PostOrder> {
 }
 
 impl<T, D> CompleteTreeContainer<T, D> {
+    
+    ///Cast this container into another provided `X` has the same
+    ///size and alignment as `T`. Panics if they do not.
+    pub fn convert<X>(mut self) -> CompleteTreeContainer<X,D> {
+        
+        assert_eq!(core::mem::size_of::<X>(),core::mem::size_of::<T>());
+        assert_eq!(core::mem::align_of::<X>(),core::mem::align_of::<T>());
+        let nodes = unsafe{
+            let length = self.nodes.len();
+            let ptr = self.nodes.as_mut_ptr();
+            core::mem::forget(self);
+            Box::from_raw(core::slice::from_raw_parts_mut(ptr as *mut _, length))
+        };
+
+        CompleteTreeContainer{
+            _p:PhantomData,
+            nodes
+        }
+    }
+
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self) -> Box<[T]> {
         self.nodes
     }
-}
 
-impl<T, D> CompleteTreeContainer<T, D> {
+    
     #[inline]
     fn from_vec_inner(
         vec: Vec<T>,
