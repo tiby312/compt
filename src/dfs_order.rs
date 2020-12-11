@@ -272,16 +272,11 @@ pub struct Vistr<'a, T: 'a, D> {
 
 impl<'a, T: 'a, D> Vistr<'a, T, D> {
     #[inline]
-    pub fn create_wrap(&self) -> Vistr<T, D> {
+    pub fn borrow(&self) -> Vistr<T, D> {
         Vistr {
             _p: PhantomData,
             remaining: self.remaining,
         }
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.remaining
     }
 
     #[inline]
@@ -414,19 +409,13 @@ pub struct VistrMut<'a, T: 'a, D> {
 
 impl<'a, T: 'a, D> VistrMut<'a, T, D> {
     #[inline]
-    pub fn create_wrap_mut(&mut self) -> VistrMut<T, D> {
+    pub fn borrow_mut(&mut self) -> VistrMut<T, D> {
         VistrMut {
             _p: PhantomData,
             remaining: self.remaining,
         }
     }
     
-
-    #[inline]
-    pub fn as_slice_mut(&mut self) -> &mut [T] {
-        self.remaining
-    }
-
     #[inline]
     pub fn into_slice(self) -> &'a mut [T] {
         self.remaining
