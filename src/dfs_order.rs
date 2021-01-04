@@ -100,11 +100,11 @@ impl<T, D> CompleteTreeContainer<T, D> {
     
     ///Cast this container into another provided `X` has the same
     ///size and alignment as `T`. Panics if they do not.
-    pub fn convert<X>(mut self) -> CompleteTreeContainer<X,D> where T:AsRef<X>{
+    pub unsafe fn convert<X>(mut self) -> CompleteTreeContainer<X,D>{
         
         assert_eq!(core::mem::size_of::<X>(),core::mem::size_of::<T>());
         assert_eq!(core::mem::align_of::<X>(),core::mem::align_of::<T>());
-        let nodes = unsafe{
+        let nodes = {
             let length = self.nodes.len();
             let ptr = self.nodes.as_mut_ptr();
             core::mem::forget(self);
