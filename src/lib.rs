@@ -99,6 +99,7 @@ pub fn compute_height(num_nodes: usize) -> usize {
 ///Dfs in order iterator. Each call to next() will return the next element
 ///in dfs in order.
 ///Internally uses a Vec for the stack.
+#[derive(Clone)]
 pub struct DfsInOrderIter<C: Visitor> {
     a: Vec<(C::Item, Option<C>)>,
     length: Option<usize>,
@@ -159,6 +160,7 @@ impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsInOrderIter<C> {
 ///Dfs preorder iterator. Each call to next() will return the next element
 ///in dfs order.
 ///Internally uses a Vec for the stack.
+#[derive(Clone)]
 pub struct DfsPreOrderIter<C: Visitor> {
     a: Vec<C>,
     length: Option<usize>,
@@ -245,6 +247,7 @@ impl<C: Visitor> Iterator for BfsIter<C> {
 
 
 ///Map iterator adapter
+#[derive(Clone)]
 pub struct Map<C, F> {
     func: F,
     inner: C,
@@ -489,6 +492,7 @@ fn rec_post<C: Visitor>(a: C, func: &mut impl FnMut(C::Item)) {
 }
 
 ///Flips left and right children.
+#[derive(Clone)]
 pub struct Flip<T: Visitor>(T);
 impl<T: Visitor> Visitor for Flip<T> {
     type Item = T::Item;
@@ -500,6 +504,7 @@ impl<T: Visitor> Visitor for Flip<T> {
 unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
 
 ///Only returns children up untill level num.
+#[derive(Clone)]
 pub struct Take<T: Visitor> {
     a: T,
     num: usize,
@@ -536,6 +541,7 @@ impl<T: Visitor> Visitor for Take<T> {
 
 ///Tree visitor that zips up two seperate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
+#[derive(Clone)]
 pub struct Zip<T1: Visitor, T2: Visitor> {
     a: T1,
     b: T2,
@@ -602,6 +608,7 @@ unsafe impl<T1: FixedDepthVisitor, T2: FixedDepthVisitor> FixedDepthVisitor for 
 pub struct Depth(pub usize);
 
 ///A wrapper iterator that will additionally return the depth of each element.
+#[derive(Clone)]
 pub struct LevelIter<T> {
     inner: T,
     depth: Depth,

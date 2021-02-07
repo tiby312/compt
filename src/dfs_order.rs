@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use alloc::boxed::Box;
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
-trait DfsOrder {
+trait DfsOrder:Clone {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]);
     fn split<T>(nodes: &[T]) -> (&T, &[T], &[T]);
 }
@@ -64,6 +64,7 @@ impl DfsOrder for PostOrder {
 
 ///Container for a dfs order tree. Internally uses a Vec. Derefs to a CompleteTree.
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct CompleteTreeContainer<T, D> {
     _p: PhantomData<D>,
     nodes: Box<[T]>,
@@ -265,9 +266,16 @@ impl<T, D> CompleteTree<T, D> {
 
 ///Tree visitor that returns a reference to each element in the tree.
 #[repr(transparent)]
+
 pub struct Vistr<'a, T: 'a, D> {
     _p: PhantomData<D>,
     remaining: &'a [T],
+}
+
+impl<'a,T:'a,D> Clone for Vistr<'a,T,D>{
+    fn clone(&self)->Vistr<'a,T,D>{
+        Vistr{_p:PhantomData,remaining:self.remaining}
+    }
 }
 
 impl<'a, T: 'a, D> Vistr<'a, T, D> {
