@@ -1,5 +1,5 @@
 //!## Summary
-//! A library that provides a complete binary tree visitor trait with default implemenations for visiting strategies such as dfs_inorder or dfs_preorder, etc.
+//! A library that provides a complete binary tree visitor trait with default implementations for visiting strategies such as dfs_inorder or dfs_preorder, etc.
 //! Some adaptors are also provided that let you map, zip, or optionally also produce the depth on every call to next().
 //! It also provides two flavors of a complete binary tree data structure with mutable and immutable visitors that implement the visitor trait.
 //! One laid out in bfs, and one laid out in dfs in order in memory. Both of these flavors assume that every node in the tree is the same type.
@@ -26,12 +26,12 @@
 //!## Unsafety in the provided two tree implementations
 //!
 //! With a regular Vec, getting one mutable reference to an element will borrow the
-//! entire Vec. However a tree has properties that let us make guarentees about
+//! entire Vec. However a tree has properties that let us make guarantees about
 //! which elements can be mutably borrowed at the same time. With the bfs tree, the children
-//! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guarenteed that the parent,
+//! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guaranteed that the parent,
 //! and the two children are all distinct elements and so mutable references two all of them can exist at the same time.
 //! With the dfs implementation, on every call to next() we use split_at_mut() to split the current slice we have into three parts:
-//! the current node, the elements ot the left, and the elements to the right.
+//! the current node, the elements to the left, and the elements to the right.
 //!
 //!## Memory Locality
 //!
@@ -39,7 +39,7 @@
 //! The main memory access pattern that we want to be fast is the following: If I have a parent, I hope to be able
 //! to access the children fast. So we want the children to be close to the parent.
 //! While in bfs order, the root's children are literally right next to it, the children of nodes in the the second
-//! to last level of the tree could be extremly far apart (possibly n/2 elements away!).
+//! to last level of the tree could be extremely far apart (possibly n/2 elements away!).
 //! With dfs order, as you go down the tree, you gain better and better locality.
 //!
 //! A downside with dfs ordering is that if not all space is used by the leaf nodes,
@@ -503,7 +503,7 @@ impl<T: Visitor> Visitor for Flip<T> {
 }
 unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
 
-///Only returns children up untill level num.
+///Only returns children up until level num.
 #[derive(Clone)]
 pub struct Take<T: Visitor> {
     a: T,
@@ -539,7 +539,7 @@ impl<T: Visitor> Visitor for Take<T> {
     }
 }
 
-///Tree visitor that zips up two seperate visitors.
+///Tree visitor that zips up two separate visitors.
 ///If one of the iterators returns None for its children, this iterator will return None.
 #[derive(Clone)]
 pub struct Zip<T1: Visitor, T2: Visitor> {
