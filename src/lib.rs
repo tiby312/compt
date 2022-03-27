@@ -277,12 +277,12 @@ impl<B, C: Visitor, F: Fn(C::Item) -> B + Clone> Visitor for Map<C, F> {
     }
 }
 
-unsafe impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisitor for Map<C, F> {}
+impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisitor for Map<C, F> {}
 
 ///If implemented, then the level_remaining_hint must return the exact height of the tree.
 ///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
 ///so those iterators can implement TrustedLen in this case.
-pub unsafe trait FixedDepthVisitor: Visitor {
+pub trait FixedDepthVisitor: Visitor {
     fn get_height(&self)->usize{
         self.level_remaining_hint().0
     }
@@ -501,7 +501,7 @@ impl<T: Visitor> Visitor for Flip<T> {
         (a, rest.map(|[l, r]| [Flip(r), Flip(l)]))
     }
 }
-unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
+impl<T: FixedDepthVisitor> FixedDepthVisitor for Flip<T> {}
 
 ///Only returns children up until level num.
 #[derive(Clone)]
@@ -601,7 +601,7 @@ impl<T1: Visitor, T2: Visitor> Visitor for Zip<T1, T2> {
         (min, min2)
     }
 }
-unsafe impl<T1: FixedDepthVisitor, T2: FixedDepthVisitor> FixedDepthVisitor for Zip<T1, T2> {}
+impl<T1: FixedDepthVisitor, T2: FixedDepthVisitor> FixedDepthVisitor for Zip<T1, T2> {}
 
 #[derive(Copy, Clone)]
 ///A level descriptor.
@@ -661,4 +661,4 @@ impl<T: Visitor> Visitor for LevelIter<T> {
         self.inner.level_remaining_hint()
     }
 }
-unsafe impl<T: FixedDepthVisitor> FixedDepthVisitor for LevelIter<T> {}
+impl<T: FixedDepthVisitor> FixedDepthVisitor for LevelIter<T> {}

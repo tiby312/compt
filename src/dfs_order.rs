@@ -99,25 +99,6 @@ impl<T> CompleteTreeContainer<T, PostOrder> {
 
 impl<T, D> CompleteTreeContainer<T, D> {
     
-    ///Cast this container into another provided `X` has the same
-    ///size and alignment as `T`. Panics if they do not.
-    pub unsafe fn convert<X>(mut self) -> CompleteTreeContainer<X,D>{
-        
-        assert_eq!(core::mem::size_of::<X>(),core::mem::size_of::<T>());
-        assert_eq!(core::mem::align_of::<X>(),core::mem::align_of::<T>());
-        let nodes = {
-            let length = self.nodes.len();
-            let ptr = self.nodes.as_mut_ptr();
-            core::mem::forget(self);
-            Box::from_raw(core::slice::from_raw_parts_mut(ptr as *mut _, length))
-        };
-
-        CompleteTreeContainer{
-            _p:PhantomData,
-            nodes
-        }
-    }
-
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self) -> Box<[T]> {
@@ -396,9 +377,9 @@ fn vistr_next<T, D: DfsOrder>(vistr: Vistr<T, D>) -> (&T, Option<[Vistr<T, D>; 2
     }
 }
 
-unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PreOrder> {}
-unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, InOrder> {}
-unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PostOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PreOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, InOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PostOrder> {}
 
 impl<'a, T, D> core::ops::Deref for VistrMut<'a, T, D> {
     type Target = Vistr<'a, T, D>;
@@ -525,6 +506,6 @@ impl<'a, T: 'a> Visitor for VistrMut<'a, T, PostOrder> {
     }
 }
 
-unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, PreOrder> {}
-unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, InOrder> {}
-unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, PostOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, PreOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, InOrder> {}
+impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T, PostOrder> {}

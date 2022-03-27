@@ -104,7 +104,7 @@ pub struct VistrMut<'a, T: 'a> {
     _p:PhantomData<&'a mut [T]>
 }
 
-unsafe impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T> {}
+impl<'a, T: 'a> FixedDepthVisitor for VistrMut<'a, T> {}
 
 impl<'a, T: 'a> Visitor for VistrMut<'a, T> {
     type Item = &'a mut T;
@@ -177,7 +177,7 @@ pub struct Vistr<'a, T: 'a> {
     arr: &'a [T],
 }
 
-unsafe impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T> {}
+impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T> {}
 
 impl<'a, T: 'a> Visitor for Vistr<'a, T> {
     type Item = &'a T;
