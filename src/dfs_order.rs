@@ -212,6 +212,13 @@ impl<'a, T, D> CompleteTreeMut<'a, T, D> {
         }
     }
 
+    pub fn borrow_mut(&mut self)->CompleteTreeMut<T,D>{
+        CompleteTreeMut{
+            _p:PhantomData,
+            nodes:self.nodes
+        }
+    }
+
     #[inline]
     fn from_slice_inner_mut(
         arr: &'a mut [T],
@@ -225,15 +232,15 @@ impl<'a, T, D> CompleteTreeMut<'a, T, D> {
     }
 
     #[inline]
-    pub fn get_nodes_mut(&mut self) -> &mut [T] {
-        &mut self.nodes
+    pub fn get_nodes_mut( self) -> &'a mut [T] {
+        self.nodes
     }
 
     #[inline]
-    pub fn vistr_mut(&mut self) -> VistrMut<T, D> {
+    pub fn vistr_mut(self) -> VistrMut<'a,T, D> {
         VistrMut {
             _p: PhantomData,
-            remaining: &mut self.nodes,
+            remaining:  self.nodes,
         }
     }
 }
@@ -250,18 +257,25 @@ impl<'a, T, D> CompleteTree<'a, T, D> {
         })
     }
 
+    pub fn borrow(&self)->CompleteTree<T,D>{
+        CompleteTree{
+            _p:PhantomData,
+            nodes:self.nodes
+        }
+    }
+
     #[inline]
-    pub fn get_height(&self) -> usize {
+    pub fn get_height(self) -> usize {
         compute_height(self.nodes.len())
     }
 
     #[inline]
-    pub fn get_nodes(&self) -> &[T] {
+    pub fn get_nodes(self) -> &'a [T] {
         self.nodes
     }
 
     #[inline]
-    pub fn vistr(&self) -> Vistr<T, D> {
+    pub fn vistr(self) -> Vistr<'a,T, D> {
         Vistr {
             _p: PhantomData,
             remaining: self.nodes,

@@ -12,7 +12,7 @@ fn main() {
     let mut k =
         compt::dfs_order::CompleteTreeContainer::from_inorder(vec![3, 1, 4, 0, 5, 2, 6]).unwrap();
 
-    let mut tree = k.as_tree_mut();
+    let tree = k.as_tree_mut();
     let k = tree.vistr_mut();
     let (a, rest) = k.next();
     let [left, right] = rest.unwrap();
