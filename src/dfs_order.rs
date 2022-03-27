@@ -1,9 +1,9 @@
 use super::*;
-use core::marker::PhantomData;
 use alloc::boxed::Box;
+use core::marker::PhantomData;
 
 ///Specified which type of dfs order we want. In order/pre order/post order.
-trait DfsOrder:Clone {
+trait DfsOrder: Clone {
     fn split_mut<T>(nodes: &mut [T]) -> (&mut T, &mut [T], &mut [T]);
     fn split<T>(nodes: &[T]) -> (&T, &[T], &[T]);
 }
@@ -98,119 +98,156 @@ impl<T> CompleteTreeContainer<T, PostOrder> {
 }
 
 impl<T, D> CompleteTreeContainer<T, D> {
-    
     #[inline]
     ///Returns the underlying elements as they are, in BFS order.
     pub fn into_nodes(self) -> Box<[T]> {
         self.nodes
     }
 
-    
+    pub fn as_tree(&self) -> CompleteTree<T, D> {
+        CompleteTree {
+            _p: PhantomData,
+            nodes: &self.nodes,
+        }
+    }
+
+    pub fn as_tree_mut(&mut self) -> CompleteTreeMut<T, D> {
+        CompleteTreeMut {
+            _p: PhantomData,
+            nodes: &mut self.nodes,
+        }
+    }
+
     #[inline]
     fn from_vec_inner(
         vec: Vec<T>,
         _order: D,
     ) -> Result<CompleteTreeContainer<T, D>, NotCompleteTreeSizeErr> {
         valid_node_num(vec.len())?;
-        
+
         Ok(CompleteTreeContainer {
             _p: PhantomData,
             nodes: vec.into_boxed_slice(),
         })
-    
-    }
-}
-
-impl<T, D> core::ops::Deref for CompleteTreeContainer<T, D> {
-    type Target = CompleteTree<T, D>;
-    #[inline]
-    fn deref(&self) -> &CompleteTree<T, D> {
-        unsafe { &*(&self.nodes as &[T] as *const [T] as *const dfs_order::CompleteTree<T, D>) }
-    }
-}
-impl<T, D> core::ops::DerefMut for CompleteTreeContainer<T, D> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut CompleteTree<T, D> {
-        unsafe {
-            &mut *(&mut self.nodes as &mut [T] as *mut [T] as *mut dfs_order::CompleteTree<T, D>)
-        }
     }
 }
 
 ///Complete binary tree stored in DFS inorder order.
 ///Height is atleast 1.
 #[repr(transparent)]
-pub struct CompleteTree<T, D> {
+pub struct CompleteTree<'a, T, D> {
     _p: PhantomData<D>,
-    nodes: [T],
+    nodes: &'a [T],
 }
 
-impl<T> CompleteTree<T, PreOrder> {
+impl<'a, T> CompleteTree<'a, T, PreOrder> {
     #[inline]
-    pub fn from_preorder(arr: &[T]) -> Result<&CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_preorder(
+        arr: &'a [T],
+    ) -> Result<CompleteTree<'a, T, PreOrder>, NotCompleteTreeSizeErr> {
         CompleteTree::from_slice_inner(arr, PreOrder)
     }
 }
-impl<T> CompleteTree<T, InOrder> {
+impl<'a, T> CompleteTree<'a, T, InOrder> {
     #[inline]
-    pub fn from_inorder(arr: &[T]) -> Result<&CompleteTree<T, InOrder>, NotCompleteTreeSizeErr> {
+    pub fn from_inorder(
+        arr: &'a [T],
+    ) -> Result<CompleteTree<'a, T, InOrder>, NotCompleteTreeSizeErr> {
         CompleteTree::from_slice_inner(arr, InOrder)
     }
 }
-impl<T> CompleteTree<T, PostOrder> {
+impl<'a, T> CompleteTree<'a, T, PostOrder> {
     #[inline]
     pub fn from_postorder(
-        arr: &[T],
-    ) -> Result<&CompleteTree<T, PostOrder>, NotCompleteTreeSizeErr> {
+        arr: &'a [T],
+    ) -> Result<CompleteTree<'a, T, PostOrder>, NotCompleteTreeSizeErr> {
         CompleteTree::from_slice_inner(arr, PostOrder)
     }
 }
 
-impl<T> CompleteTree<T, PreOrder> {
+pub struct CompleteTreeMut<'a, T, D> {
+    _p: PhantomData<D>,
+    nodes: &'a mut [T],
+}
+
+impl<'a, T> CompleteTreeMut<'a, T, PreOrder> {
     #[inline]
     pub fn from_preorder_mut(
-        arr: &mut [T],
-    ) -> Result<&mut CompleteTree<T, PreOrder>, NotCompleteTreeSizeErr> {
-        CompleteTree::from_slice_inner_mut(arr, PreOrder)
+        arr: &'a mut [T],
+    ) -> Result<CompleteTreeMut<'a, T, PreOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeMut::from_slice_inner_mut(arr, PreOrder)
     }
 }
-impl<T> CompleteTree<T, InOrder> {
+impl<'a, T> CompleteTree<'a, T, InOrder> {
     #[inline]
     pub fn from_inorder_mut(
-        arr: &mut [T],
-    ) -> Result<&mut CompleteTree<T, InOrder>, NotCompleteTreeSizeErr> {
-        CompleteTree::from_slice_inner_mut(arr, InOrder)
+        arr: &'a mut [T],
+    ) -> Result<CompleteTreeMut<'a, T, InOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeMut::from_slice_inner_mut(arr, InOrder)
     }
 }
-impl<T> CompleteTree<T, PostOrder> {
+impl<'a, T> CompleteTreeMut<'a, T, PostOrder> {
     #[inline]
     pub fn from_post_mut(
-        arr: &mut [T],
-    ) -> Result<&mut CompleteTree<T, PostOrder>, NotCompleteTreeSizeErr> {
-        CompleteTree::from_slice_inner_mut(arr, PostOrder)
+        arr: &'a mut [T],
+    ) -> Result<CompleteTreeMut<'a, T, PostOrder>, NotCompleteTreeSizeErr> {
+        CompleteTreeMut::from_slice_inner_mut(arr, PostOrder)
     }
 }
 
-impl<T, D> CompleteTree<T, D> {
-    #[inline]
-    fn from_slice_inner(
-        arr: &[T],
-        _order: D,
-    ) -> Result<&CompleteTree<T, D>, NotCompleteTreeSizeErr> {
-        valid_node_num(arr.len())?;
-        let tree = unsafe { &*(arr as *const [T] as *const dfs_order::CompleteTree<T, D>) };
-        Ok(tree)
+impl<'a, T, D> From<CompleteTreeMut<'a, T, D>> for CompleteTree<'a, T, D> {
+    fn from(a: CompleteTreeMut<'a, T, D>) -> CompleteTree<'a, T, D> {
+        CompleteTree {
+            _p: PhantomData,
+            nodes: a.nodes,
+        }
+    }
+}
+
+impl<'a, T, D> CompleteTreeMut<'a, T, D> {
+    pub fn as_tree(&self) -> CompleteTree<T, D> {
+        CompleteTree {
+            _p: PhantomData,
+            nodes: self.nodes,
+        }
     }
 
     #[inline]
     fn from_slice_inner_mut(
-        arr: &mut [T],
+        arr: &'a mut [T],
         _order: D,
-    ) -> Result<&mut CompleteTree<T, D>, NotCompleteTreeSizeErr> {
+    ) -> Result<CompleteTreeMut<'a, T, D>, NotCompleteTreeSizeErr> {
         valid_node_num(arr.len())?;
-        let tree = unsafe { &mut *(arr as *mut [T] as *mut dfs_order::CompleteTree<T, D>) };
-        Ok(tree)
-        
+        Ok(CompleteTreeMut {
+            _p: PhantomData,
+            nodes: arr,
+        })
+    }
+
+    #[inline]
+    pub fn get_nodes_mut(&mut self) -> &mut [T] {
+        &mut self.nodes
+    }
+
+    #[inline]
+    pub fn vistr_mut(&mut self) -> VistrMut<T, D> {
+        VistrMut {
+            _p: PhantomData,
+            remaining: &mut self.nodes,
+        }
+    }
+}
+impl<'a, T, D> CompleteTree<'a, T, D> {
+    #[inline]
+    fn from_slice_inner(
+        arr: &'a [T],
+        _order: D,
+    ) -> Result<CompleteTree<'a, T, D>, NotCompleteTreeSizeErr> {
+        valid_node_num(arr.len())?;
+        Ok(CompleteTree {
+            _p: PhantomData,
+            nodes: arr,
+        })
     }
 
     #[inline]
@@ -220,27 +257,14 @@ impl<T, D> CompleteTree<T, D> {
 
     #[inline]
     pub fn get_nodes(&self) -> &[T] {
-        &self.nodes
-    }
-
-    #[inline]
-    pub fn get_nodes_mut(&mut self) -> &mut [T] {
-        &mut self.nodes
+        self.nodes
     }
 
     #[inline]
     pub fn vistr(&self) -> Vistr<T, D> {
         Vistr {
             _p: PhantomData,
-            remaining: &self.nodes,
-        }
-    }
-
-    #[inline]
-    pub fn vistr_mut(&mut self) -> VistrMut<T, D> {
-        VistrMut {
-            _p: PhantomData,
-            remaining: &mut self.nodes,
+            remaining: self.nodes,
         }
     }
 }
@@ -253,9 +277,12 @@ pub struct Vistr<'a, T: 'a, D> {
     remaining: &'a [T],
 }
 
-impl<'a,T:'a,D> Clone for Vistr<'a,T,D>{
-    fn clone(&self)->Vistr<'a,T,D>{
-        Vistr{_p:PhantomData,remaining:self.remaining}
+impl<'a, T: 'a, D> Clone for Vistr<'a, T, D> {
+    fn clone(&self) -> Vistr<'a, T, D> {
+        Vistr {
+            _p: PhantomData,
+            remaining: self.remaining,
+        }
     }
 }
 
@@ -338,19 +365,18 @@ impl<'a, T: 'a> Visitor for Vistr<'a, T, PostOrder> {
     }
 }
 
-
 //TODO put this somewhere else
 fn log_2(x: usize) -> usize {
-    const fn num_bits<T>() -> usize { core::mem::size_of::<T>() * 8 }
+    const fn num_bits<T>() -> usize {
+        core::mem::size_of::<T>() * 8
+    }
 
     assert!(x > 0);
     (num_bits::<usize>() as u32 - x.leading_zeros() - 1) as usize
 }
 
-
-
 fn vistr_dfs_level_remaining_hint<T, D: DfsOrder>(vistr: &Vistr<T, D>) -> (usize, Option<usize>) {
-    let left = log_2(vistr.remaining.len()+1);
+    let left = log_2(vistr.remaining.len() + 1);
     //let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }
@@ -381,11 +407,13 @@ impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PreOrder> {}
 impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, InOrder> {}
 impl<'a, T: 'a> FixedDepthVisitor for Vistr<'a, T, PostOrder> {}
 
-impl<'a, T, D> core::ops::Deref for VistrMut<'a, T, D> {
-    type Target = Vistr<'a, T, D>;
+impl<'a, T: 'a, D> From<VistrMut<'a, T, D>> for Vistr<'a, T, D> {
     #[inline]
-    fn deref(&self) -> &Vistr<'a, T, D> {
-        unsafe { &*(self as *const VistrMut<T, D> as *const Vistr<T, D>) }
+    fn from(a: VistrMut<'a, T, D>) -> Vistr<'a, T, D> {
+        Vistr {
+            _p: PhantomData,
+            remaining: a.remaining,
+        }
     }
 }
 
@@ -398,13 +426,21 @@ pub struct VistrMut<'a, T: 'a, D> {
 
 impl<'a, T: 'a, D> VistrMut<'a, T, D> {
     #[inline]
+    pub fn borrow(&self) -> Vistr<T, D> {
+        Vistr {
+            _p: PhantomData,
+            remaining: self.remaining,
+        }
+    }
+
+    #[inline]
     pub fn borrow_mut(&mut self) -> VistrMut<T, D> {
         VistrMut {
             _p: PhantomData,
             remaining: self.remaining,
         }
     }
-    
+
     #[inline]
     pub fn into_slice(self) -> &'a mut [T] {
         self.remaining
@@ -414,7 +450,7 @@ impl<'a, T: 'a, D> VistrMut<'a, T, D> {
 fn vistr_mut_dfs_level_remaining_hint<T, D: DfsOrder>(
     vistr: &VistrMut<T, D>,
 ) -> (usize, Option<usize>) {
-    let left = log_2(vistr.remaining.len()+1);
+    let left = log_2(vistr.remaining.len() + 1);
     //let left = ((vistr.remaining.len() + 1) as f64).log2() as usize;
     (left, Some(left))
 }

@@ -10,9 +10,10 @@ fn main() {
     //   1       2
     // 3   4   5    6
     let mut k =
-        compt::bfs_order::CompleteTreeContainer::from_vec(vec![0, 1, 2, 3, 4, 5, 6]).unwrap();
+        compt::dfs_order::CompleteTreeContainer::from_inorder(vec![3, 1, 4, 0, 5, 2, 6]).unwrap();
 
-    let k = k.vistr_mut();
+    let mut tree = k.as_tree_mut();
+    let k = tree.vistr_mut();
     let (a, rest) = k.next();
     let [left, right] = rest.unwrap();
 

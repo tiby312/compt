@@ -23,15 +23,6 @@
 //! To provide a useful complete binary tree visitor trait that has some similar features to the Iterator trait,
 //! such as zip(), and map(), and that can be used in parallel divide and conquer style problems.
 //!
-//!## Unsafety in the provided two tree implementations
-//!
-//! With a regular Vec, getting one mutable reference to an element will borrow the
-//! entire Vec. However a tree has properties that let us make guarantees about
-//! which elements can be mutably borrowed at the same time. With the bfs tree, the children
-//! for an element at index k can be found at 2k+1 and 2k+2. This means that we are guaranteed that the parent,
-//! and the two children are all distinct elements and so mutable references two all of them can exist at the same time.
-//! With the dfs implementation, on every call to next() we use split_at_mut() to split the current slice we have into three parts:
-//! the current node, the elements to the left, and the elements to the right.
 //!
 //!## Memory Locality
 //!
@@ -56,8 +47,6 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-///A complete binary tree stored in a Vec<T> laid out in bfs order.
-pub mod bfs_order;
 ///A complete binary tree stored in a Vec<T> laid out in dfs in order.
 ///One advantage of using the dfs order over the bfs order, is that at any point during traversal of the tree,
 ///you can turn the visitor into a slice representing the rest of the nodes underneath that visitor.
@@ -73,19 +62,16 @@ pub fn compute_num_nodes(height: usize) -> usize {
 
 ///Error indicating the vec that was passed is not a size that you would expect for the given height.
 #[derive(Copy, Clone, Debug)]
-pub struct NotCompleteTreeSizeErr{
-    pub length:usize
+pub struct NotCompleteTreeSizeErr {
+    pub length: usize,
 }
 
-
-#[must_use]
-fn valid_node_num(num: usize) -> Result<(),NotCompleteTreeSizeErr> {
-    if (num + 1).is_power_of_two() && num != 0{
+fn valid_node_num(num: usize) -> Result<(), NotCompleteTreeSizeErr> {
+    if (num + 1).is_power_of_two() && num != 0 {
         Ok(())
-    }else{
-        Err(NotCompleteTreeSizeErr{length:num})
+    } else {
+        Err(NotCompleteTreeSizeErr { length: num })
     }
-
 }
 
 ///Computes the height for the number of nodes given.
@@ -168,9 +154,7 @@ pub struct DfsPreOrderIter<C: Visitor> {
     num: usize,
 }
 
-
-
-impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {} 
+impl<C: Visitor> core::iter::FusedIterator for DfsPreOrderIter<C> {}
 impl<C: FixedDepthVisitor> core::iter::ExactSizeIterator for DfsPreOrderIter<C> {}
 
 impl<C: Visitor> Iterator for DfsPreOrderIter<C> {
@@ -221,7 +205,7 @@ impl<C: Visitor> Iterator for BfsIter<C> {
     type Item = C::Item;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        
+
         let queue = &mut self.a;
         match queue.pop_front() {
             Some(e) => {
@@ -244,7 +228,6 @@ impl<C: Visitor> Iterator for BfsIter<C> {
     }
 }
 */
-
 
 ///Map iterator adapter
 #[derive(Clone)]
@@ -283,31 +266,30 @@ impl<B, C: FixedDepthVisitor, F: Fn(C::Item) -> B + Clone> FixedDepthVisitor for
 ///If this is implemented, then the exact number of nodes that will be returned by a dfs or bfs traversal is known
 ///so those iterators can implement TrustedLen in this case.
 pub trait FixedDepthVisitor: Visitor {
-    fn get_height(&self)->usize{
+    fn get_height(&self) -> usize {
         self.level_remaining_hint().0
     }
 }
 
-
-
 use core::iter::FusedIterator;
 ///A version of iterating in dfs preorder implemented using iter::from_fn
 ///TODO implement all the iterators with this.
-pub fn dfs_preorder_iter2<C:Visitor>(a:C)->impl Iterator<Item=C::Item>+FusedIterator{
-    let mut stack=Vec::new();
+pub fn dfs_preorder_iter2<C: Visitor>(a: C) -> impl Iterator<Item = C::Item> + FusedIterator {
+    let mut stack = Vec::new();
     stack.push(a);
-    core::iter::from_fn(move ||{
-        if let Some(x)=stack.pop(){
+    core::iter::from_fn(move || {
+        if let Some(x) = stack.pop() {
             let (i, next) = x.next();
             if let Some([left, right]) = next {
                 stack.push(right);
                 stack.push(left);
             }
             Some(i)
-        }else{
+        } else {
             None
         }
-    }).fuse()
+    })
+    .fuse()
 }
 
 ///The trait this crate revoles around.
@@ -367,8 +349,8 @@ pub trait Visitor: Sized {
     ///Provides an iterator that returns each element in bfs order.
     #[inline]
     fn bfs_iter(self) -> BfsIter<Self> {
-        
-        
+
+
         let (levels, max_levels) = self.level_remaining_hint();
 
         //Need enough room to fit all the leafs in the queue at once, of which there are n/2.
@@ -386,10 +368,9 @@ pub trait Visitor: Sized {
             length,
             num: 0,
         }
-        
+
     }
     */
-
 
     ///Provides a dfs preorder iterator. Unlike the callback version,
     ///This one relies on dynamic allocation for its stack.
