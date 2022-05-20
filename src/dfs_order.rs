@@ -178,7 +178,7 @@ impl<'a, T> CompleteTreeMut<'a, T, PreOrder> {
         CompleteTreeMut::from_slice_inner_mut(arr, PreOrder)
     }
 }
-impl<'a, T> CompleteTree<'a, T, InOrder> {
+impl<'a, T> CompleteTreeMut<'a, T, InOrder> {
     #[inline]
     pub fn from_inorder_mut(
         arr: &'a mut [T],
